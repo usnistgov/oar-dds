@@ -1,0 +1,15 @@
+# Local development configuration for Cache Management Service
+
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/oar_cache
+    username: oar_app
+    password: test123
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update  # Auto-create tables in local dev
+
+cache-management:
+  cleanup:
+    enabled: false  # Disable cleanup in local development

@@ -1,0 +1,41 @@
+# Shared configuration for all microservices
+
+# AWS Configuration
+cloud:
+  aws:
+    region: us-east-1
+
+# Jackson JSON formatting
+spring:
+  jackson:
+    serialization:
+      indent_output: true
+
+# Eureka Client (common for all services)
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    preferIpAddress: true
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+
+# Logging
+logging:
+  level:
+    root: INFO
+    gov.nist.oar: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

@@ -1,0 +1,260 @@
+services:
+  # PostgreSQL Database for cache-mgmt service
+  postgres:
+    image: postgres:15-alpine
+    container_name: oar-postgres
+    environment:
+      POSTGRES_USER: oar_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test123}
+      POSTGRES_DB: oar_cache
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oar_app -d oar_cache"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oar-network
+
+  # Spring Cloud Config Server
+  config-server:
+    build:
+      context: ./infrastructure/config-server
+      dockerfile: Dockerfile
+    container_name: oar-config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-native}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - oar-network
+
+  # Eureka Service Discovery Server
+  eureka-server:
+    build:
+      context: ./infrastructure/eureka-server
+      dockerfile: Dockerfile
+    container_name: oar-eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - oar-network
+
+  # Dataset Access Service
+  dataset-access:
+    build:
+      context: ./services/dataset-access
+      dockerfile: Dockerfile
+    container_name: oar-dataset-access
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    volumes:
+      - bag-storage-data:/usr/local/oar-dist-service/data
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # AIP Access Service
+  aip-access:
+    build:
+      context: ./services/aip-access
+      dockerfile: Dockerfile
+    container_name: oar-aip-access
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    volumes:
+      - bag-storage-data:/usr/local/oar-dist-service/data
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # Bundle Plan Service
+  bundle-plan:
+    build:
+      context: ./services/bundle-plan
+      dockerfile: Dockerfile
+    container_name: oar-bundle-plan
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=oar_bundle_plan
+      - POSTGRES_USER=oar_app
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # Data Bundle Service
+  data-bundle:
+    build:
+      context: ./services/data-bundle
+      dockerfile: Dockerfile
+    container_name: oar-data-bundle
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # Cache Management Service
+  cache-mgmt:
+    build:
+      context: ./services/cache-mgmt
+      dockerfile: Dockerfile
+    container_name: oar-cache-mgmt
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=oar_cache
+      - POSTGRES_USER=oar_app
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
+    volumes:
+      - bag-storage-data:/usr/local/oar-dist-service/data
+      - cache-data:/data/ds
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # Restricted Access Service
+  restricted-access:
+    build:
+      context: ./services/restricted-access
+      dockerfile: Dockerfile
+    container_name: oar-restricted-access
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
+    volumes:
+      - bag-storage-data:/usr/local/oar-dist-service/data
+      - rpa-cache-data:/data/rpa
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # Version Service
+  version-service:
+    build:
+      context: ./services/version-service
+      dockerfile: Dockerfile
+    container_name: oar-version-service
+    ports:
+      - "8087:8087"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./infrastructure/api-gateway
+      dockerfile: Dockerfile
+    container_name: oar-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - oar-network
+
+networks:
+  oar-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  bag-storage-data:
+  cache-data:
+  rpa-cache-data:

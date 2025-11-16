@@ -1,0 +1,15 @@
+# Local development configuration for Bundle Download Plan Service
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bundle_plans_local
+    username: postgres
+    password: postgres
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+bundle-plan:
+  max-bundle-size: 1073741824  # 1 GB for local testing
+  max-files-per-bundle: 1000

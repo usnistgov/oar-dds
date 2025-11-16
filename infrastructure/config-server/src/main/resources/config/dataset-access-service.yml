@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: dataset-access-service
+
+server:
+  port: 8081
+
+# Bag Storage Configuration
+distrib:
+  bagstore:
+    mode: local
+    location: /usr/local/oar-dist-service/data
+  baseurl: https://localhost/od/ds
+  nerdm:
+    baseurl: http://localhost:8090/id
