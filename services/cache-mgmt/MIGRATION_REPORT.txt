@@ -1,0 +1,280 @@
+================================================================================
+CACHE MANAGEMENT SERVICE - MIGRATION REPORT
+================================================================================
+
+SOURCE: /Users/one1/oar-dist-service-postgres/src/main/java/
+TARGET: /Users/one1/oar-dist-ms/services/cache-mgmt/src/main/java/
+
+================================================================================
+SUMMARY
+================================================================================
+
+Total Java Files Copied: 102
+Total Lines of Code: 20,522
+Package Structure: PRESERVED (no transformations)
+
+================================================================================
+FILES COPIED BY CATEGORY
+================================================================================
+
+1. CACHE MANAGEMENT WEB LAYER (5 files)
+   /gov/nist/oar/distrib/web/
+   - CacheManagementController.java
+   - NISTCacheManagerConfig.java
+   - CacheManagerProvider.java
+   - ErrorInfo.java
+   - ConfigurationException.java
+
+2. CACHE MANAGER CORE PACKAGE (32 files)
+   /gov/nist/oar/distrib/cachemgr/
+   - BasicCache.java
+   - BasicCacheManager.java
+   - BasicIntegrityMonitor.java
+   - Cache.java
+   - CacheExpiryCheck.java
+   - CacheManagementException.java
+   - CacheManager.java
+   - CacheObject.java
+   - CacheObjectCheck.java
+   - CacheVolume.java
+   - CacheVolumeException.java
+   - ConfigurableCache.java
+   - DeletionFailureException.java
+   - DeletionPlan.java
+   - DeletionPlanner.java
+   - DeletionStrategy.java
+   - IntegrityException.java
+   - IntegrityMonitor.java
+   - InventoryException.java
+   - InventoryMetadataException.java
+   - InventorySearchException.java
+   - NoMatchingVolumesException.java
+   - Reservation.java
+   - RestorationException.java
+   - RestorationTargetNotFoundException.java
+   - Restorer.java
+   - SelectionStrategy.java
+   - StorageInventoryDB.java
+   - VolumeConfig.java
+   - VolumeNotFoundException.java
+   - VolumeStatus.java
+   - package-info.java
+
+3. CACHE MANAGER INVENTORY PACKAGE (14 files)
+   /gov/nist/oar/distrib/cachemgr/inventory/
+   - AlwaysFailsCheck.java
+   - BigOldSelectionStrategy.java
+   - BySizeSelectionStrategy.java
+   - ChecksumCheck.java
+   - ChecksumMismatchException.java
+   - DefaultDeletionPlanner.java
+   - JDBCStorageInventoryDB.java
+   - OldSelectionStrategy.java
+   - PostgresStorageInventoryDB.java
+   - ReadableCheck.java
+   - SizeCheck.java
+   - SizeLimitedSelectionStrategy.java
+   - SQLiteStorageInventoryDB.java
+   - package-info.java
+
+4. CACHE MANAGER PDR PACKAGE (15 files)
+   /gov/nist/oar/distrib/cachemgr/pdr/
+   - BagCacher.java
+   - CacheOpts.java
+   - HeadBagCacheManager.java
+   - HeadBagCacheResourceResolver.java
+   - HeadBagDB.java
+   - HeadBagRestorer.java
+   - MetadataCache.java
+   - PDRCacheManager.java
+   - PDRCacheRoles.java
+   - PDRConstants.java
+   - PDRDatasetCacheManager.java
+   - PDRDatasetRestorer.java
+   - PDRStorageInventoryDB.java
+   - RestrictedDatasetRestorer.java
+   - package-info.java
+
+5. CACHE MANAGER RESTORE PACKAGE (3 files)
+   /gov/nist/oar/distrib/cachemgr/restore/
+   - FileCopyRestorer.java
+   - RestorerBase.java
+   - ZipFileRestorer.java
+
+6. CACHE MANAGER SIMPLE PACKAGE (4 files)
+   /gov/nist/oar/distrib/cachemgr/simple/
+   - SimpleCache.java
+   - SimpleCacheManager.java
+   - ZipRepoRestorer.java
+   - package-info.java
+
+7. CACHE MANAGER STORAGE PACKAGE (4 files)
+   /gov/nist/oar/distrib/cachemgr/storage/
+   - AWSS3CacheVolume.java
+   - FilesystemCacheVolume.java
+   - NullCacheVolume.java
+   - package-info.java
+
+8. CORE DEPENDENCIES (9 files)
+   /gov/nist/oar/distrib/
+   - BagStorage.java
+   - Checksum.java
+   - DistributionException.java
+   - LongTermStorage.java
+   - ObjectNotFoundException.java
+   - ResourceNotFoundException.java
+   - StorageStateException.java
+   - StorageVolumeException.java
+   - CacheManagementServiceApplication.java (NEW)
+
+9. STORAGE CLASSES (6 files)
+   /gov/nist/oar/distrib/storage/
+   - AWSS3ClientProvider.java
+   - AWSS3LongTermStorage.java
+   - FilesystemLongTermStorage.java
+   - PDRBagStorageBase.java
+   - WebLongTermStorage.java
+   - package-info.java
+
+10. BAG UTILITIES (3 files)
+    /gov/nist/oar/bags/preservation/
+    - BagUtils.java
+    - HeadBagUtils.java
+    - ZipBagUtils.java
+
+11. CLIENT CLASSES (4 files)
+    /gov/nist/oar/clients/
+    - ResourceResolver.java
+    - OARServiceException.java
+    - AmbiguousIDException.java
+    - OARWebServiceException.java
+
+12. RMM CLIENT CLASSES (3 files)
+    /gov/nist/oar/clients/rmm/
+    - ComponentInfoCache.java
+    - RMMResourceResolver.java
+    - package-info.java
+
+================================================================================
+NEW FILES CREATED
+================================================================================
+
+1. Main Application Class:
+   /gov/nist/oar/distrib/CacheManagementServiceApplication.java
+   - Spring Boot application with @EnableDiscoveryClient and @EnableFeignClients
+
+2. Application Configuration:
+   /src/main/resources/application.yml
+   - Service name: cache-management-service
+   - Port: 8085
+
+================================================================================
+MODIFICATIONS APPLIED
+================================================================================
+
+1. Fixed javax.activation imports to jakarta.activation:
+   - CacheManagerProvider.java: javax.activation.MimetypesFileTypeMap -> jakarta.activation.MimetypesFileTypeMap
+
+================================================================================
+DEPENDENCIES SKIPPED (INTENTIONAL)
+================================================================================
+
+The following classes are imported but NOT copied, as they belong in other services:
+
+1. Service Layer Classes (referenced only in CacheManagerProvider.getFileDownloadService):
+   - gov.nist.oar.distrib.service.FileDownloadService
+   - gov.nist.oar.distrib.service.CacheEnabledFileDownloadService
+   - gov.nist.oar.distrib.service.NerdmDrivenFromBagFileDownloadService
+   - gov.nist.oar.distrib.service.PreservationBagService
+
+   NOTE: The getFileDownloadService() method in CacheManagerProvider is NOT used by 
+   CacheManagementController. This method appears to be for integration with file download 
+   services, which will be handled separately in the dataset-access or file-download service.
+   
+   These classes will need to be either:
+   a) Removed/commented out if not needed
+   b) Accessed via Feign client if cross-service integration is required
+
+================================================================================
+FILES CONFIRMED NOT COPIED (AS REQUESTED)
+================================================================================
+
+1. RPA Service Classes: NONE FOUND (correctly excluded)
+   - No files from gov/nist/oar/distrib/service/rpa/
+
+2. DataPackaging Classes: NONE FOUND (correctly excluded)
+   - No files from gov/nist/oar/distrib/datapackage/
+
+3. RestrictedDatasetRestorer.java:
+   - This file IS included (it's part of cachemgr.pdr package)
+   - It's a cache restoration component, NOT an RPA service component
+   - Required for cache management of restricted datasets
+
+================================================================================
+PACKAGE STRUCTURE VERIFICATION
+================================================================================
+
+Directory tree (preserved original structure):
+
+/gov/nist/oar/
+├── bags/preservation/          (3 files)
+├── clients/                    (4 files)
+│   └── rmm/                    (3 files)
+└── distrib/                    (9 files)
+    ├── cachemgr/               (32 files)
+    │   ├── inventory/          (14 files)
+    │   ├── pdr/                (15 files)
+    │   ├── restore/            (3 files)
+    │   ├── simple/             (4 files)
+    │   └── storage/            (4 files)
+    ├── storage/                (6 files)
+    └── web/                    (5 files)
+
+================================================================================
+NEXT STEPS / RECOMMENDATIONS
+================================================================================
+
+1. RESOLVE SERVICE DEPENDENCIES:
+   - Review CacheManagerProvider.getFileDownloadService() method
+   - Determine if this method is needed in cache-mgmt service
+   - If needed, create Feign client interfaces for service classes
+   - If not needed, comment out or remove the method
+
+2. ADD MISSING DEPENDENCIES TO POM.XML:
+   - Spring Boot Starter Web
+   - Spring Cloud Starter Netflix Eureka Client
+   - Spring Cloud Starter OpenFeign
+   - AWS SDK for S3 (software.amazon.awssdk:s3)
+   - Jakarta Activation API
+   - JSON libraries (org.json)
+   - Database drivers (PostgreSQL, SQLite)
+   - BagIt library
+   - Logging (SLF4J, Logback)
+
+3. CONFIGURATION FILES:
+   - Add bootstrap.yml for config server integration
+   - Add logging configuration (logback.xml)
+   - Add cache management specific properties
+
+4. BUILD VERIFICATION:
+   - DO NOT attempt to build yet (as requested)
+   - Address service dependencies first
+   - Ensure all Spring Boot configurations are in place
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+[✓] Original package structure preserved
+[✓] Only cache management classes copied
+[✓] RPA classes excluded
+[✓] DataPackaging classes excluded
+[✓] Service layer classes intentionally skipped
+[✓] javax.activation -> jakarta.activation conversion applied
+[✓] Main application class created
+[✓] Application configuration created
+[✓] Total file count: 102 Java files
+
+================================================================================
+END OF REPORT
+================================================================================

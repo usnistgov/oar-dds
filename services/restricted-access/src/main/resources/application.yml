@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: restricted-access-service
+server:
+  port: 8086

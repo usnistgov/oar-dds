@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: aip-access-service
+
+server:
+  port: 8082
+
+# Bag Storage Configuration
+distrib:
+  bagstore:
+    mode: local
+    location: /usr/local/oar-dist-service/data
+  baseurl: https://localhost/od/ds

@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: cache-management-service
+server:
+  port: 8085

@@ -1,0 +1,29 @@
+# Configuration for Bundle Download Plan Service (all profiles)
+
+spring:
+  application:
+    name: bundle-download-plan-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/bundle_plans}
+    username: ${DATABASE_USER:oar_bundle_user}
+    password: ${DATABASE_PASSWORD:oar_bundle_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  port: 8084
+
+# Service-specific configuration
+bundle-plan:
+  max-bundle-size: 10737418240  # 10 GB
+  max-files-per-bundle: 10000

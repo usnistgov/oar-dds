@@ -1,0 +1,174 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Enable service discovery locator for automatic route creation
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Explicit route definitions for fine-grained control
+      routes:
+        # Dataset Access Service routes
+        - id: dataset-access-service
+          uri: lb://dataset-access-service
+          predicates:
+            - Path=/od/ds/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: datasetAccessCircuitBreaker
+                fallbackUri: forward:/fallback/dataset-access
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+
+        # AIP Access Service routes
+        - id: aip-access-service
+          uri: lb://aip-access-service
+          predicates:
+            - Path=/aip/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: aipAccessCircuitBreaker
+                fallbackUri: forward:/fallback/aip-access
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+
+        # Cache Management Service routes
+        - id: cache-management-service
+          uri: lb://cache-management-service
+          predicates:
+            - Path=/cache/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: cacheManagementCircuitBreaker
+                fallbackUri: forward:/fallback/cache-management
+
+        # Bundle Download Plan Service routes
+        - id: bundle-download-plan-service
+          uri: lb://bundle-download-plan-service
+          predicates:
+            - Path=/bundle/plan/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: bundlePlanCircuitBreaker
+                fallbackUri: forward:/fallback/bundle-plan
+
+        # Data Bundle Access Service routes
+        - id: data-bundle-access-service
+          uri: lb://data-bundle-access-service
+          predicates:
+            - Path=/bundle/data/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: bundleDataCircuitBreaker
+                fallbackUri: forward:/fallback/bundle-data
+
+        # Restricted Access Service routes
+        - id: restricted-access-service
+          uri: lb://restricted-access-service
+          predicates:
+            - Path=/rpa/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: restrictedAccessCircuitBreaker
+                fallbackUri: forward:/fallback/restricted-access
+
+        # Version Service routes
+        - id: version-service
+          uri: lb://version-service
+          predicates:
+            - Path=/version/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: versionCircuitBreaker
+                fallbackUri: forward:/fallback/version
+
+      # Global CORS configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            maxAge: 3600
+
+# Eureka client configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: false
+    instance-id: ${spring.application.name}:${server.port}
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Resilience4j Circuit Breaker configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 10s
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 100
+        slow-call-duration-threshold: 3s
+    instances:
+      datasetAccessCircuitBreaker:
+        base-config: default
+      aipAccessCircuitBreaker:
+        base-config: default
+      cacheManagementCircuitBreaker:
+        base-config: default
+      bundlePlanCircuitBreaker:
+        base-config: default
+      bundleDataCircuitBreaker:
+        base-config: default
+      restrictedAccessCircuitBreaker:
+        base-config: default
+      versionCircuitBreaker:
+        base-config: default
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.client: INFO
+    root: INFO
