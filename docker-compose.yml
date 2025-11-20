@@ -2,15 +2,15 @@ services:
   # PostgreSQL Database for cache-mgmt service
   postgres:
     image: postgres:15-alpine
-    container_name: oar-postgres
+    container_name: oar-ms-postgres
     environment:
       POSTGRES_USER: oar_app
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test123}
       POSTGRES_DB: oar_cache
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - oar-ms-postgres-data:/var/lib/postgresql/data
       - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U oar_app -d oar_cache"]
@@ -18,14 +18,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Spring Cloud Config Server
   config-server:
     build:
       context: ./infrastructure/config-server
       dockerfile: Dockerfile
-    container_name: oar-config-server
+    container_name: oar-ms-config-server
     ports:
       - "8888:8888"
     environment:
@@ -37,14 +37,14 @@ services:
       retries: 10
       start_period: 40s
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Eureka Service Discovery Server
   eureka-server:
     build:
       context: ./infrastructure/eureka-server
       dockerfile: Dockerfile
-    container_name: oar-eureka-server
+    container_name: oar-ms-eureka-server
     ports:
       - "8761:8761"
     environment:
@@ -60,14 +60,14 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Dataset Access Service
   dataset-access:
     build:
       context: ./services/dataset-access
       dockerfile: Dockerfile
-    container_name: oar-dataset-access
+    container_name: oar-ms-dataset-access
     ports:
       - "8081:8081"
     environment:
@@ -75,21 +75,21 @@ services:
       - CONFIG_SERVER_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     volumes:
-      - bag-storage-data:/usr/local/oar-dist-service/data
+      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # AIP Access Service
   aip-access:
     build:
       context: ./services/aip-access
       dockerfile: Dockerfile
-    container_name: oar-aip-access
+    container_name: oar-ms-aip-access
     ports:
       - "8082:8082"
     environment:
@@ -97,21 +97,21 @@ services:
       - CONFIG_SERVER_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     volumes:
-      - bag-storage-data:/usr/local/oar-dist-service/data
+      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Bundle Plan Service
   bundle-plan:
     build:
       context: ./services/bundle-plan
       dockerfile: Dockerfile
-    container_name: oar-bundle-plan
+    container_name: oar-ms-bundle-plan
     ports:
       - "8083:8083"
     environment:
@@ -131,14 +131,14 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Data Bundle Service
   data-bundle:
     build:
       context: ./services/data-bundle
       dockerfile: Dockerfile
-    container_name: oar-data-bundle
+    container_name: oar-ms-data-bundle
     ports:
       - "8084:8084"
     environment:
@@ -151,14 +151,14 @@ services:
       eureka-server:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Cache Management Service
   cache-mgmt:
     build:
       context: ./services/cache-mgmt
       dockerfile: Dockerfile
-    container_name: oar-cache-mgmt
+    container_name: oar-ms-cache-mgmt
     ports:
       - "8085:8085"
     environment:
@@ -171,8 +171,8 @@ services:
       - POSTGRES_USER=oar_app
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
     volumes:
-      - bag-storage-data:/usr/local/oar-dist-service/data
-      - cache-data:/data/ds
+      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
+      - oar-ms-cache-data:/data/ds
     depends_on:
       config-server:
         condition: service_healthy
@@ -181,14 +181,14 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Restricted Access Service
   restricted-access:
     build:
       context: ./services/restricted-access
       dockerfile: Dockerfile
-    container_name: oar-restricted-access
+    container_name: oar-ms-restricted-access
     ports:
       - "8086:8086"
     environment:
@@ -197,8 +197,8 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
     volumes:
-      - bag-storage-data:/usr/local/oar-dist-service/data
-      - rpa-cache-data:/data/rpa
+      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
+      - oar-ms-rpa-cache-data:/data/rpa
     depends_on:
       config-server:
         condition: service_healthy
@@ -207,14 +207,14 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # Version Service
   version-service:
     build:
       context: ./services/version-service
       dockerfile: Dockerfile
-    container_name: oar-version-service
+    container_name: oar-ms-version-service
     ports:
       - "8087:8087"
     environment:
@@ -227,14 +227,14 @@ services:
       eureka-server:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
   # API Gateway
   api-gateway:
     build:
       context: ./infrastructure/api-gateway
       dockerfile: Dockerfile
-    container_name: oar-api-gateway
+    container_name: oar-ms-api-gateway
     ports:
       - "8080:8080"
     environment:
@@ -247,14 +247,14 @@ services:
       eureka-server:
         condition: service_healthy
     networks:
-      - oar-network
+      - oar-ms-network
 
 networks:
-  oar-network:
+  oar-ms-network:
     driver: bridge
 
 volumes:
-  postgres-data:
-  bag-storage-data:
-  cache-data:
-  rpa-cache-data:
+  oar-ms-postgres-data:
+  oar-ms-bag-storage-data:
+  oar-ms-cache-data:
+  oar-ms-rpa-cache-data:
