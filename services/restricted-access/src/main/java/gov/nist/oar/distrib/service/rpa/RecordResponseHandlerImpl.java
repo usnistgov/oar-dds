@@ -45,7 +45,10 @@ public class RecordResponseHandlerImpl implements RecordResponseHandler {
      *
      * @param rpaConfiguration  the {@link RPAConfiguration} to use for email notifications
      * @param connectionFactory the {@link HttpURLConnection} factory to use for email notifications
+     * @param rpaCachingService the RPA caching service to use (for local cache mode)
+     * @deprecated Use the constructor with RPADatasetCacher instead for better flexibility
      */
+    @Deprecated
     public RecordResponseHandlerImpl(RPAConfiguration rpaConfiguration,
                                      HttpURLConnectionFactory connectionFactory,
                                      RPACachingService rpaCachingService) {
@@ -54,6 +57,42 @@ public class RecordResponseHandlerImpl implements RecordResponseHandler {
         this.emailSender = new EmailSender(rpaConfiguration, connectionFactory);
         // Set RPADatasetCacher
         this.rpaDatasetCacher = new DefaultRPADatasetCacher(rpaCachingService);
+    }
+
+    /**
+     * Constructs a new instance of the RecordResponseHandlerImpl class with the given configuration
+     * and dataset cacher.
+     * <p>
+     * This constructor allows injection of a custom RPADatasetCacher, enabling remote cache mode
+     * where caching is delegated to the cache-mgmt service.
+     *
+     * @param rpaConfiguration  the {@link RPAConfiguration} to use for email notifications
+     * @param connectionFactory the {@link HttpURLConnection} factory to use for email notifications
+     * @param rpaDatasetCacher  the dataset cacher to use for caching operations
+     */
+    public RecordResponseHandlerImpl(RPAConfiguration rpaConfiguration,
+                                     HttpURLConnectionFactory connectionFactory,
+                                     RPADatasetCacher rpaDatasetCacher) {
+        this.rpaConfiguration = rpaConfiguration;
+        // Set EmailSender
+        this.emailSender = new EmailSender(rpaConfiguration, connectionFactory);
+        // Set RPADatasetCacher
+        this.rpaDatasetCacher = rpaDatasetCacher;
+    }
+
+    /**
+     * Creates a RecordResponseHandlerImpl using the provided dataset cacher.
+     * This factory method provides a clear way to create an instance with a custom cacher.
+     *
+     * @param rpaConfiguration  the RPA configuration
+     * @param connectionFactory the HTTP connection factory
+     * @param datasetCacher     the dataset cacher to use
+     * @return a new RecordResponseHandlerImpl instance
+     */
+    public static RecordResponseHandlerImpl withDatasetCacher(RPAConfiguration rpaConfiguration,
+                                                               HttpURLConnectionFactory connectionFactory,
+                                                               RPADatasetCacher datasetCacher) {
+        return new RecordResponseHandlerImpl(rpaConfiguration, connectionFactory, datasetCacher);
     }
 
     /**

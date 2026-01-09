@@ -153,9 +153,26 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
      * Constructs a new instance of the service using the given RPA configuration.
      *
      * @param rpaConfiguration The RPA configuration to use for this service.
+     * @param rpaCachingService The RPA caching service to use (for local cache mode).
      */
     public HttpURLConnectionRPARequestHandlerService(RPAConfiguration rpaConfiguration,
                                                      RPACachingService rpaCachingService) {
+        this(rpaConfiguration, rpaCachingService, null);
+    }
+
+    /**
+     * Constructs a new instance of the service using the given RPA configuration and dataset cacher.
+     * <p>
+     * This constructor allows injection of a custom RPADatasetCacher, enabling remote cache mode
+     * where caching is delegated to the cache-mgmt service instead of using local cache.
+     *
+     * @param rpaConfiguration The RPA configuration to use for this service.
+     * @param rpaCachingService The RPA caching service (can be null if using remote cacher).
+     * @param rpaDatasetCacher The dataset cacher to use (if null, uses DefaultRPADatasetCacher).
+     */
+    public HttpURLConnectionRPARequestHandlerService(RPAConfiguration rpaConfiguration,
+                                                     RPACachingService rpaCachingService,
+                                                     RPADatasetCacher rpaDatasetCacher) {
         // Initialize instance variables
         this.rpaConfiguration = rpaConfiguration;
         this.connectionFactory = url -> (HttpURLConnection) url.openConnection();
@@ -170,12 +187,16 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         this.recaptchaHelper = new RecaptchaHelper();
         this.recaptchaHelper.setHttpURLConnectionFactory(this.connectionFactory);
 
+        // Set RPADatasetCacher - use injected cacher if provided, otherwise create default
+        if (rpaDatasetCacher != null) {
+            this.rpaDatasetCacher = rpaDatasetCacher;
+        } else if (rpaCachingService != null) {
+            this.rpaDatasetCacher = new DefaultRPADatasetCacher(rpaCachingService);
+        }
+
         // Set RecordResponseHandler
         this.recordResponseHandler = new RecordResponseHandlerImpl(this.rpaConfiguration, this.connectionFactory,
-                rpaCachingService);
-
-        // Set RPADatasetCacher
-        this.rpaDatasetCacher = new DefaultRPADatasetCacher(rpaCachingService);
+                this.rpaDatasetCacher);
 
         // Set HttpClient
         this.httpClient = HttpClients.createDefault();
