@@ -1,4 +1,18 @@
 services:
+  # Redis for API Gateway rate limiting
+  redis:
+    image: redis:7-alpine
+    container_name: oar-ms-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - oar-ms-network
+
   # PostgreSQL Database for cache-mgmt service
   postgres:
     image: postgres:15-alpine
@@ -75,7 +89,7 @@ services:
       - CONFIG_SERVER_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     volumes:
-      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
+      - ./test-data:/usr/local/oar-dist-service/data  # Bind mount for testing
     depends_on:
       config-server:
         condition: service_healthy
@@ -171,8 +185,8 @@ services:
       - POSTGRES_USER=oar_app
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
     volumes:
-      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
-      - oar-ms-cache-data:/data/ds
+      - ./test-data:/usr/local/oar-dist-service/data  # Bind mount for testing (preservation storage)
+      - oar-ms-cache-data:/data/ds  # Docker volume for cache storage
     depends_on:
       config-server:
         condition: service_healthy
@@ -241,11 +255,32 @@ services:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
       - CONFIG_SERVER_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - oar-ms-network
+
+  # Demo UI - Angular Material Dashboard
+  demo-ui:
+    build:
+      context: ./demo-ui
+      dockerfile: Dockerfile
+    container_name: oar-ms-demo-ui
+    ports:
+      - "4200:80"
+    depends_on:
+      - api-gateway
+      - eureka-server
+      - config-server
+      - cache-mgmt
+      - dataset-access
     networks:
       - oar-ms-network
 
