@@ -13,3 +13,7 @@ distrib:
   baseurl: https://localhost/od/ds
   nerdm:
     baseurl: http://localhost:8090/id
+  # Cache Configuration
+  cache:
+    mode: remote  # Use remote cache-mgmt microservice
+    trigger: false  # Don't auto-cache entire datasets on first file request

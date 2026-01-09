@@ -7,6 +7,10 @@ server:
 
 # Restricted Public Access Configuration
 distrib:
+  # Cache mode: 'local' for local cache (development), 'remote' for cache-mgmt service (production)
+  cache:
+    mode: remote
+
   rpa:
     bagstore-location: /usr/local/oar-dist-service/data
     bagstore-mode: local
