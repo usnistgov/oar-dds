@@ -307,7 +307,7 @@ public abstract class PDRStorageInventoryDB extends JDBCStorageInventoryDB imple
         StringBuilder sql = new StringBuilder(find_sql_base);
         sql.append("AND d.pdrid='").append(pdrid).append("' AND v.status >= ").append(purpose);
         if (purpose >= VOL_FOR_GET)
-            sql.append(" AND d.cached=1");
+            sql.append(" AND d.cached=true");
         sql.append(";");
 
         // lock access to the db in case a deletion plan is progress, unless the caller just
@@ -330,7 +330,7 @@ public abstract class PDRStorageInventoryDB extends JDBCStorageInventoryDB imple
         StringBuilder sql = new StringBuilder(find_sql_base);
         sql.append("AND d.ediid='").append(ediid).append("' AND v.status >= ").append(purpose);
         if (purpose >= VOL_FOR_GET)
-            sql.append(" AND d.cached=1");
+            sql.append(" AND d.cached=true");
         sql.append(";");
 
         // lock access to the db in case a deletion plan is progress, unless the caller just
@@ -355,7 +355,7 @@ public abstract class PDRStorageInventoryDB extends JDBCStorageInventoryDB imple
         StringBuilder sql = new StringBuilder(find_sql_base);
         sql.append("AND d.objid LIKE '").append(idpat).append("' AND v.status >= ").append(purpose);
         if (purpose >= VOL_FOR_GET)
-            sql.append(" AND d.cached=1");
+            sql.append(" AND d.cached=true");
         sql.append(";");
 
         // lock access to the db in case a deletion plan is progress, unless the caller just
@@ -409,7 +409,7 @@ public abstract class PDRStorageInventoryDB extends JDBCStorageInventoryDB imple
 
             // calculate totals for files having that volume ID
             String qsel = "SELECT count(*) as count,sum(size) as totsz,max(since) as newest," +
-                          "min(checked) as oldest FROM objects WHERE cached=1 AND volume=" +vid;
+                          "min(checked) as oldest FROM objects WHERE cached=true AND volume=" +vid;
             stmt = conn.createStatement();
             res = stmt.executeQuery(qsel);
 
@@ -466,8 +466,8 @@ public abstract class PDRStorageInventoryDB extends JDBCStorageInventoryDB imple
         StringBuilder qsel = new StringBuilder();
         qsel.append("SELECT d.ediid,d.pdrid,count(*) as count,sum(d.size) as totsz,max(d.since) as newest,")
             .append("min(d.checked) as oldest FROM objects d, volumes v ")
-            .append("WHERE d.volume=v.id AND d.cached=1 AND v.name!='old' AND d.objid LIKE '")
-            .append(aipid).append("/%' GROUP BY d.ediid");
+            .append("WHERE d.volume=v.id AND d.cached=true AND v.name!='old' AND d.objid LIKE '")
+            .append(aipid).append("/%' GROUP BY d.ediid,d.pdrid");
 
         Connection conn = null;
         Statement stmt = null;
@@ -501,12 +501,12 @@ public abstract class PDRStorageInventoryDB extends JDBCStorageInventoryDB imple
      */
     public JSONArray summarizeContents(String volname) throws InventoryException {
         String qsel = "SELECT d.ediid,d.pdrid,count(*) as count,sum(d.size) as totsz,max(d.since) as newest," +
-                      "min(d.checked) as oldest FROM objects d, volumes v WHERE d.volume=v.id AND d.cached=1";
-        if (volname != null) 
+                      "min(d.checked) as oldest FROM objects d, volumes v WHERE d.volume=v.id AND d.cached=true";
+        if (volname != null)
             qsel += " AND v.name='" + volname + "'";
         else
             qsel += " AND v.name!='old'";
-        qsel += " GROUP BY d.ediid ORDER BY oldest";
+        qsel += " GROUP BY d.ediid,d.pdrid ORDER BY oldest";
 
         Connection conn = null;
         Statement stmt = null;

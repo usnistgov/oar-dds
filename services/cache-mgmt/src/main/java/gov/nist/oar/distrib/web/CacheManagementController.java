@@ -13,6 +13,7 @@ package gov.nist.oar.distrib.web;
 
 import gov.nist.oar.distrib.cachemgr.VolumeStatus;
 import gov.nist.oar.distrib.cachemgr.pdr.PDRCacheManager;
+import gov.nist.oar.distrib.cachemgr.pdr.PDRCacheRoles;
 import gov.nist.oar.distrib.cachemgr.CacheManagementException;
 import gov.nist.oar.distrib.cachemgr.CacheObject;
 import gov.nist.oar.distrib.cachemgr.InventoryException;
@@ -35,6 +36,9 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import java.util.Set;
+
+import org.apache.commons.lang3.RandomStringUtils;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,6 +53,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -67,6 +72,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * and its operation--via its CacheManager.  
  */
 @RestController
+@CrossOrigin(origins = "*")
 @Tag(name="Cache Manager API",
      description=" These API endpoints provide information on the contents and status of the data cache as well as control of the data monitor")
 @RequestMapping(value="/cache")
@@ -75,11 +81,14 @@ public class CacheManagementController {
     Logger log = LoggerFactory.getLogger(CacheManagementController.class);
 
     PDRCacheManager mgr = null;
+    gov.nist.oar.distrib.cachemgr.pdr.HeadBagCacheManager headBagMgr = null;
 
     @Autowired
     public CacheManagementController(CacheManagerProvider provider) throws ConfigurationException {
-        if (provider != null && provider.canProvideManager())
+        if (provider != null && provider.canProvideManager()) {
             mgr = provider.getPDRCacheManager();
+            headBagMgr = provider.getHeadBagManager();
+        }
     }
 
     /**
@@ -530,8 +539,8 @@ public class CacheManagementController {
     
 
     /**
-     * ensure all the objects in a dataset are cached.  The returned message is the same as 
-     * {@link #listObjectsFor(String,String)}.  
+     * ensure all the objects in a dataset are cached.  The returned message is the same as
+     * {@link #listObjectsFor(String,String)}.
 
     @Operation(summary="Ensure all objects from a dataset collection are deleted from the cache",
                description="")
@@ -542,6 +551,321 @@ public class CacheManagementController {
         _checkForManager();
     }
      */
+
+    /**
+     * Get the NERDm resource metadata for a dataset.
+     * <p>
+     * This endpoint retrieves the complete NERDm (NIST Extended Resource Dublin-core Metadata)
+     * resource record from the dataset's head bag. This metadata includes dataset-level information
+     * such as title, description, authors, and the full list of components (files).
+     *
+     * @param dsid the dataset identifier (AIP ID, e.g., "mds2-2106" or full ARK)
+     * @param request the HTTP request (for extracting optional version parameter)
+     * @return the NERDm resource metadata as a JSON object
+     * @throws NotOperatingException if the cache manager is not operational
+     * @throws ResourceNotFoundException if the dataset cannot be found
+     * @throws CacheManagementException if an error occurs retrieving the metadata
+     */
+    @Operation(summary="Get NERDm resource metadata for a dataset",
+               description="Returns the complete NERDm metadata record from the dataset's head bag")
+    @GetMapping(value="/metadata/{dsid}", produces = "application/json")
+    public Map<String, Object> getResourceMetadata(
+            @PathVariable("dsid") String dsid,
+            @Parameter(hidden=true) HttpServletRequest request)
+        throws NotOperatingException, ResourceNotFoundException, CacheManagementException
+    {
+        _checkForManager();
+        if (headBagMgr == null) {
+            throw new NotOperatingException("HeadBag cache manager is not available");
+        }
+
+        String version = request.getParameter("version");
+
+        log.debug("Fetching resource metadata for: {} (version: {})", dsid, version);
+
+        try {
+            JSONObject metadata = headBagMgr.resolveAIPID(dsid, version);
+            log.info("Retrieved resource metadata for: {}", dsid);
+            return metadata.toMap();
+        } catch (ResourceNotFoundException ex) {
+            log.warn("Resource not found: {}", dsid);
+            throw ex;
+        } catch (CacheManagementException ex) {
+            log.error("Error retrieving resource metadata for: {}", dsid, ex);
+            throw ex;
+        }
+    }
+
+    /**
+     * Get the NERDm component metadata for a specific file within a dataset.
+     * <p>
+     * This endpoint retrieves the NERDm component metadata (file-level metadata) from the
+     * dataset's head bag. Component metadata includes file size, checksum, content type,
+     * description, and other file-specific information.
+     *
+     * @param dsid the dataset identifier (AIP ID, e.g., "mds2-2106")
+     * @param request the HTTP request (for extracting filepath and optional version parameter)
+     * @return the NERDm component metadata as a JSON object
+     * @throws NotOperatingException if the cache manager is not operational
+     * @throws ResourceNotFoundException if the dataset cannot be found
+     * @throws FileNotFoundException if the file component is not found in the dataset
+     * @throws CacheManagementException if an error occurs retrieving the metadata
+     */
+    @Operation(summary="Get NERDm component metadata for a file",
+               description="Returns the component metadata from the dataset's head bag for a specific file")
+    @GetMapping(value="/metadata/{dsid}/**", produces = "application/json")
+    public Map<String, Object> getComponentMetadata(
+            @PathVariable("dsid") String dsid,
+            @Parameter(hidden=true) HttpServletRequest request)
+        throws NotOperatingException, ResourceNotFoundException, FileNotFoundException, CacheManagementException
+    {
+        _checkForManager();
+        if (headBagMgr == null) {
+            throw new NotOperatingException("HeadBag cache manager is not available");
+        }
+
+        String filepath = (String) request.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
+        filepath = filepath.substring("/cache/metadata/".length() + dsid.length() + 1);
+        String version = request.getParameter("version");
+
+        log.debug("Fetching component metadata for: {}/{} (version: {})", dsid, filepath, version);
+
+        try {
+            JSONObject metadata = headBagMgr.resolveDistribution(dsid, filepath, version);
+            log.info("Retrieved component metadata for: {}/{}", dsid, filepath);
+            return metadata.toMap();
+        } catch (FileNotFoundException ex) {
+            log.warn("File component not found: {}/{}", dsid, filepath);
+            throw ex;
+        } catch (ResourceNotFoundException ex) {
+            log.warn("Resource not found: {}", dsid);
+            throw ex;
+        } catch (CacheManagementException ex) {
+            log.error("Error retrieving component metadata for: {}/{}", dsid, filepath, ex);
+            throw ex;
+        }
+    }
+
+    // =====================================
+    // Cache Clear Endpoint (for demo/testing)
+    // =====================================
+
+    /**
+     * Clear all cached objects from the cache.
+     * <p>
+     * This endpoint removes all cached objects from all volumes. It is primarily
+     * intended for demo and testing purposes.
+     *
+     * @return ResponseEntity indicating success and number of objects removed
+     */
+    @Operation(summary="Clear all cached objects",
+               description="Removes all cached objects from all volumes (for demo/testing)")
+    @DeleteMapping(value="/clear", produces = "application/json")
+    public ResponseEntity<Map<String, Object>> clearAllCache()
+        throws NotOperatingException, CacheManagementException
+    {
+        _checkForManager();
+
+        log.info("Clearing all cached objects");
+
+        int uncachedCount = 0;
+        int errorCount = 0;
+
+        // Get all cached objects across all volumes
+        List<CacheObject> allObjects = mgr.selectDatasetObjects(null, VolumeStatus.VOL_FOR_UPDATE);
+
+        for (CacheObject obj : allObjects) {
+            try {
+                log.debug("Uncaching: {}", obj.id);
+                mgr.uncache(obj.id);
+                uncachedCount++;
+            } catch (CacheManagementException e) {
+                log.error("Failed to uncache object {}: {}", obj.id, e.getMessage());
+                errorCount++;
+            }
+        }
+
+        JSONObject result = new JSONObject();
+        result.put("cleared", uncachedCount);
+        result.put("errors", errorCount);
+        result.put("total", allObjects.size());
+        result.put("success", errorCount == 0);
+
+        log.info("Cleared {}/{} cached objects ({} errors)", uncachedCount, allObjects.size(), errorCount);
+
+        return new ResponseEntity<>(result.toMap(), HttpStatus.OK);
+    }
+
+    // =====================================
+    // RPA (Restricted Public Access) Cache Endpoints
+    // =====================================
+
+    private static final int RPA_RANDOM_ID_LENGTH = 20;
+
+    /**
+     * Generate a random alphanumeric string for the dataset to store.
+     */
+    private String generateRandomID(int length, boolean useLetters, boolean useNumbers) {
+        return RandomStringUtils.random(length, useLetters, useNumbers);
+    }
+
+    /**
+     * Cache an entire dataset for Restricted Public Access (RPA).
+     * <p>
+     * This endpoint caches all files from a dataset using the ROLE_RESTRICTED_DATA preference
+     * and returns a random ID that can be used to retrieve the cached objects. This is specifically
+     * designed for RPA workflows where temporary access to restricted data is required.
+     *
+     * @param dsid the dataset identifier (AIP ID, e.g., "mds2-2106" or full ARK)
+     * @param request the HTTP request (for extracting optional version parameter)
+     * @return ResponseEntity containing the random ID and list of cached files
+     */
+    @Operation(summary="Cache dataset for RPA access",
+               description="Caches all files from a dataset with ROLE_RESTRICTED_DATA preference and returns a random ID for retrieval")
+    @PutMapping(value="/rpa/{dsid}", produces = "application/json")
+    public ResponseEntity<Map<String, Object>> cacheDatasetForRPA(
+            @PathVariable("dsid") String dsid,
+            @Parameter(hidden=true) HttpServletRequest request)
+        throws NotOperatingException, ResourceNotFoundException, CacheManagementException, StorageVolumeException
+    {
+        _checkForManager();
+
+        String version = request.getParameter("version");
+
+        // Handle ark IDs
+        String normalizedDsid = dsid;
+        if (dsid.startsWith("ark:/")) {
+            String[] parts = dsid.split("/");
+            if (parts.length < 3) {
+                throw new IllegalArgumentException("Invalid ark ID format: " + dsid);
+            }
+            normalizedDsid = parts[2];
+        }
+
+        log.info("Caching dataset {} for RPA access (version: {})", normalizedDsid, version);
+
+        // Generate random ID with rpa- prefix
+        String randomID = "rpa-" + generateRandomID(RPA_RANDOM_ID_LENGTH, true, true);
+
+        // Determine role preferences based on version
+        int prefs = PDRCacheRoles.ROLE_RESTRICTED_DATA;
+        if (version != null && !version.isEmpty()) {
+            prefs = PDRCacheRoles.ROLE_OLD_RESTRICTED_DATA;
+        }
+
+        // Cache the dataset
+        Set<String> files = mgr.cacheDataset(normalizedDsid, version, true, prefs, randomID);
+
+        log.info("Cached {} files for RPA with ID: {}", files.size(), randomID);
+
+        JSONObject result = new JSONObject();
+        result.put("randomId", randomID);
+        result.put("datasetId", normalizedDsid);
+        result.put("version", version);
+        result.put("fileCount", files.size());
+        result.put("files", new JSONArray(files));
+
+        return new ResponseEntity<>(result.toMap(), HttpStatus.CREATED);
+    }
+
+    /**
+     * Get cached objects for an RPA session by random ID.
+     * <p>
+     * This endpoint retrieves all cached objects associated with a given RPA random ID.
+     * The objects include file metadata such as filepath, size, checksum, etc.
+     *
+     * @param randomId the random ID returned from the cacheDatasetForRPA call
+     * @return ResponseEntity containing the random ID and list of cached object metadata
+     */
+    @Operation(summary="Get RPA cached objects",
+               description="Returns metadata for all cached objects associated with an RPA random ID")
+    @GetMapping(value="/rpa/objects/{randomId}", produces = "application/json")
+    public ResponseEntity<Map<String, Object>> getRPACachedObjects(
+            @PathVariable("randomId") String randomId)
+        throws NotOperatingException, CacheManagementException
+    {
+        _checkForManager();
+
+        if (randomId == null || randomId.isEmpty()) {
+            throw new IllegalArgumentException("Random ID cannot be null or empty");
+        }
+
+        log.debug("Fetching RPA cached objects for ID: {}", randomId);
+
+        List<CacheObject> objects = mgr.selectDatasetObjects(randomId, VolumeStatus.VOL_FOR_GET);
+
+        JSONArray metadata = new JSONArray();
+        for (CacheObject obj : objects) {
+            JSONObject objMd = obj.exportMetadata();
+            objMd.put("cached", obj.cached);
+            objMd.put("volume", obj.volname);
+            objMd.put("size", obj.getSize());
+            objMd.put("id", obj.id);
+            objMd.put("name", obj.name);
+            metadata.put(objMd);
+        }
+
+        JSONObject result = new JSONObject();
+        result.put("randomId", randomId);
+        result.put("objectCount", objects.size());
+        result.put("objects", metadata);
+
+        return new ResponseEntity<>(result.toMap(), HttpStatus.OK);
+    }
+
+    /**
+     * Uncache all objects for an RPA session by random ID.
+     * <p>
+     * This endpoint removes all cached objects associated with a given RPA random ID.
+     * This should be called when the RPA access period has expired or the user has
+     * finished downloading the files.
+     *
+     * @param randomId the random ID returned from the cacheDatasetForRPA call
+     * @return ResponseEntity indicating success and number of objects removed
+     */
+    @Operation(summary="Uncache RPA objects",
+               description="Removes all cached objects associated with an RPA random ID")
+    @DeleteMapping(value="/rpa/objects/{randomId}", produces = "application/json")
+    public ResponseEntity<Map<String, Object>> uncacheRPAObjects(
+            @PathVariable("randomId") String randomId)
+        throws NotOperatingException, CacheManagementException
+    {
+        _checkForManager();
+
+        if (randomId == null || randomId.isEmpty()) {
+            throw new IllegalArgumentException("Random ID cannot be null or empty");
+        }
+
+        log.info("Uncaching RPA objects for ID: {}", randomId);
+
+        List<CacheObject> objects = mgr.selectDatasetObjects(randomId, VolumeStatus.VOL_FOR_UPDATE);
+
+        int uncachedCount = 0;
+        for (CacheObject obj : objects) {
+            try {
+                log.debug("Uncaching file: {}", obj.id);
+                mgr.uncache(obj.id);
+                uncachedCount++;
+            } catch (CacheManagementException e) {
+                log.error("Failed to uncache object with ID={}: {}", obj.id, e.getMessage());
+            }
+        }
+
+        JSONObject result = new JSONObject();
+        result.put("randomId", randomId);
+        result.put("uncachedCount", uncachedCount);
+        result.put("totalObjects", objects.size());
+        result.put("success", uncachedCount > 0);
+
+        log.info("Uncached {}/{} objects for RPA ID: {}", uncachedCount, objects.size(), randomId);
+
+        return new ResponseEntity<>(result.toMap(), HttpStatus.OK);
+    }
+
+    // =====================================
+    // Exception Handlers
+    // =====================================
+
     @ExceptionHandler(NotOperatingException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ErrorInfo handleNotOperatingException(NotOperatingException ex, HttpServletRequest req) {
@@ -562,12 +886,26 @@ public class CacheManagementController {
         log.warn("Non-existent resource requested: " + req.getRequestURI() + "\n  " + ex.getMessage());
         return new ErrorInfo(req.getRequestURI(), 404, "Resource ID not found");
     }
-    
+
+    @ExceptionHandler(FileNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorInfo handleFileNotFoundException(FileNotFoundException ex, HttpServletRequest req) {
+        log.warn("File not found: " + req.getRequestURI() + "\n  " + ex.getMessage());
+        return new ErrorInfo(req.getRequestURI(), 404, "File not found in dataset");
+    }
+
     @ExceptionHandler(CacheManagementException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorInfo handleInternalError(DistributionException ex, HttpServletRequest req) {
 	log.warn("Failure processing request: " + req.getRequestURI() + "\n  " + ex.getMessage());
 	return new ErrorInfo(req.getRequestURI(), 500, "Internal Server Error");
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorInfo handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest req) {
+        log.warn("Bad request: " + req.getRequestURI() + "\n  " + ex.getMessage());
+        return new ErrorInfo(req.getRequestURI(), 400, ex.getMessage());
     }
 
 }
