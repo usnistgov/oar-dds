@@ -20,85 +20,54 @@ spring:
           predicates:
             - Path=/od/ds/**
           filters:
-            - name: CircuitBreaker
+            - name: RewritePath
               args:
-                name: datasetAccessCircuitBreaker
-                fallbackUri: forward:/fallback/dataset-access
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-                redis-rate-limiter.requestedTokens: 1
+                regexp: /od/ds/(?<segment>.*)
+                replacement: /ds/${segment}
 
         # AIP Access Service routes
         - id: aip-access-service
           uri: lb://aip-access-service
           predicates:
             - Path=/aip/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: aipAccessCircuitBreaker
-                fallbackUri: forward:/fallback/aip-access
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
 
         # Cache Management Service routes
-        - id: cache-management-service
-          uri: lb://cache-management-service
+        - id: cache-mgmt-service
+          uri: lb://cache-mgmt-service
           predicates:
             - Path=/cache/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: cacheManagementCircuitBreaker
-                fallbackUri: forward:/fallback/cache-management
 
         # Bundle Download Plan Service routes
-        - id: bundle-download-plan-service
-          uri: lb://bundle-download-plan-service
+        - id: bundle-plan-service
+          uri: lb://bundle-plan-service
           predicates:
             - Path=/bundle/plan/**
           filters:
-            - name: CircuitBreaker
+            - name: StripPrefix
               args:
-                name: bundlePlanCircuitBreaker
-                fallbackUri: forward:/fallback/bundle-plan
+                parts: 2
 
         # Data Bundle Access Service routes
-        - id: data-bundle-access-service
-          uri: lb://data-bundle-access-service
+        - id: data-bundle-service
+          uri: lb://data-bundle-service
           predicates:
             - Path=/bundle/data/**
           filters:
-            - name: CircuitBreaker
+            - name: StripPrefix
               args:
-                name: bundleDataCircuitBreaker
-                fallbackUri: forward:/fallback/bundle-data
+                parts: 2
 
         # Restricted Access Service routes
         - id: restricted-access-service
           uri: lb://restricted-access-service
           predicates:
             - Path=/rpa/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: restrictedAccessCircuitBreaker
-                fallbackUri: forward:/fallback/restricted-access
 
         # Version Service routes
         - id: version-service
           uri: lb://version-service
           predicates:
             - Path=/version/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: versionCircuitBreaker
-                fallbackUri: forward:/fallback/version
 
       # Global CORS configuration
       globalcors:
@@ -137,34 +106,15 @@ management:
     gateway:
       enabled: true
 
-# Resilience4j Circuit Breaker configuration
-resilience4j:
-  circuitbreaker:
-    configs:
-      default:
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        permitted-number-of-calls-in-half-open-state: 3
-        automatic-transition-from-open-to-half-open-enabled: true
-        wait-duration-in-open-state: 10s
-        failure-rate-threshold: 50
-        slow-call-rate-threshold: 100
-        slow-call-duration-threshold: 3s
-    instances:
-      datasetAccessCircuitBreaker:
-        base-config: default
-      aipAccessCircuitBreaker:
-        base-config: default
-      cacheManagementCircuitBreaker:
-        base-config: default
-      bundlePlanCircuitBreaker:
-        base-config: default
-      bundleDataCircuitBreaker:
-        base-config: default
-      restrictedAccessCircuitBreaker:
-        base-config: default
-      versionCircuitBreaker:
-        base-config: default
+# Resilience4j Circuit Breaker configuration (not currently used, but available for production)
+# resilience4j:
+#   circuitbreaker:
+#     configs:
+#       default:
+#         sliding-window-size: 10
+#         minimum-number-of-calls: 5
+#         wait-duration-in-open-state: 10s
+#         failure-rate-threshold: 50
 
 # Logging
 logging:
