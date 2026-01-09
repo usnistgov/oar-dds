@@ -118,6 +118,12 @@
             <artifactId>shared-utils</artifactId>
         </dependency>
 
+        <!-- Dataset Access Client for inter-service communication -->
+        <dependency>
+            <groupId>gov.nist.oar</groupId>
+            <artifactId>dataset-access-client</artifactId>
+        </dependency>
+
         <!-- Jackson for JSON processing -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
