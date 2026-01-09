@@ -338,7 +338,7 @@ public class DatasetAccessController {
     public void downloadFileViaARK(@PathVariable("dsid") String dsid, @PathVariable("naan") String naan,
                                    @Parameter(hidden = true) HttpServletRequest request,
                                    @Parameter(hidden = true) HttpServletResponse response,
-                                   @RequestParam Optional<String> requestId)
+                                   @RequestParam(value = "requestId", required = false) Optional<String> requestId)
         throws ResourceNotFoundException, FileNotFoundException, DistributionException, IOException
     {
         logger.debug("Matched ARK ID for download: ark:/" + naan + "/" + dsid);
@@ -424,7 +424,7 @@ public class DatasetAccessController {
     public Object downloadFile(@PathVariable("dsid") String dsid,
                                HttpServletRequest request,
                                HttpServletResponse response,
-                               @RequestParam Optional<String> requestId,
+                               @RequestParam(value = "requestId", required = false) Optional<String> requestId,
                                Model model)
         throws ResourceNotFoundException, FileNotFoundException, DistributionException, IOException
     {
