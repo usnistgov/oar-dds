@@ -10,7 +10,7 @@ distrib:
   packaging:
     maxpackagesize: 314572800
     maxfilecount: 50
-    allowedurls: nist.gov|s3.amazonaws.com/nist-midas|s3.amazonaws.com/nist-srd|localhost
+    allowedurls: nist.gov|s3.amazonaws.com/nist-midas|s3.amazonaws.com/nist-srd|localhost|dataset-access|api-gateway
     allowedredirects: 7
   nerdm:
     baseurl: http://localhost:8090/id
