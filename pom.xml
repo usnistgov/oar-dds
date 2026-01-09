@@ -28,9 +28,9 @@
         <lombok.version>1.18.30</lombok.version>
         <jackson.version>2.16.0</jackson.version>
         <commons-io.version>2.15.1</commons-io.version>
-        <commons-lang3.version>3.14.0</commons-lang3.version>
+        <commons-lang3.version>3.17.0</commons-lang3.version>
         <aws-sdk.version>1.12.650</aws-sdk.version>
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.5</postgresql.version>
         <flyway.version>10.8.1</flyway.version>
 
         <!-- Test Versions -->
@@ -46,6 +46,8 @@
         <module>common/shared-models</module>
         <module>common/shared-exceptions</module>
         <module>common/shared-utils</module>
+        <module>common/cache-manager-client</module>
+        <module>common/dataset-access-client</module>
 
         <!-- Infrastructure Services -->
         <module>infrastructure/eureka-server</module>
@@ -98,6 +100,18 @@
             <dependency>
                 <groupId>gov.nist.oar</groupId>
                 <artifactId>shared-utils</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>cache-manager-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>dataset-access-client</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -226,8 +240,66 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
                 </plugin>
+
+                <!-- Maven Javadoc Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.6.3</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <doclint>none</doclint>
+                        <quiet>true</quiet>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <!-- Aggregate Javadoc for all modules -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <doclint>none</doclint>
+                    <quiet>true</quiet>
+                    <doctitle>OAR Distribution Microservices API - ${project.version}</doctitle>
+                    <windowtitle>OAR Distribution Microservices API</windowtitle>
+                    <bottom>
+                        <![CDATA[Copyright &#169; NIST. Public Domain.]]>
+                    </bottom>
+                    <!-- Group packages by service -->
+                    <groups>
+                        <group>
+                            <title>Cache Management Service</title>
+                            <packages>gov.nist.oar.distrib.cachemgr*</packages>
+                        </group>
+                        <group>
+                            <title>Dataset Access Service</title>
+                            <packages>gov.nist.oar.distrib.service*:gov.nist.oar.distrib.web*</packages>
+                        </group>
+                        <group>
+                            <title>Restricted Public Access Service</title>
+                            <packages>gov.nist.oar.distrib.service.rpa*</packages>
+                        </group>
+                        <group>
+                            <title>Data Packaging Services</title>
+                            <packages>gov.nist.oar.distrib.datapackage*</packages>
+                        </group>
+                        <group>
+                            <title>Storage Layer</title>
+                            <packages>gov.nist.oar.distrib.storage*:gov.nist.oar.distrib:gov.nist.oar.bags*</packages>
+                        </group>
+                        <group>
+                            <title>Common/Clients</title>
+                            <packages>gov.nist.oar.clients*:gov.nist.oar.common*</packages>
+                        </group>
+                    </groups>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
 </project>

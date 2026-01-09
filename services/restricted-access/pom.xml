@@ -67,6 +67,12 @@
             <artifactId>shared-exceptions</artifactId>
         </dependency>
 
+        <!-- Cache Manager Client for remote cache communication -->
+        <dependency>
+            <groupId>gov.nist.oar</groupId>
+            <artifactId>cache-manager-client</artifactId>
+        </dependency>
+
         <!-- Jackson -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

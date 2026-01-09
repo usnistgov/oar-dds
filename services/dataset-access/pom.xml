@@ -94,6 +94,11 @@
             <artifactId>shared-utils</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>gov.nist.oar</groupId>
+            <artifactId>cache-manager-client</artifactId>
+        </dependency>
+
         <!-- AWS SDK v2 for S3 access -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
