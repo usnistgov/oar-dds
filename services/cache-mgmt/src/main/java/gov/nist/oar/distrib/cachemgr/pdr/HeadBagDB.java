@@ -69,7 +69,7 @@ public abstract class HeadBagDB extends PDRStorageInventoryDB {
         StringBuilder sql = new StringBuilder(find_sql_base);
         sql.append("AND d.objid LIKE '").append(aipid).append(".%' AND v.status >= ").append(purpose);
         if (purpose >= VOL_FOR_GET)
-            sql.append(" AND d.cached=1");
+            sql.append(" AND d.cached=true");
         sql.append(";");
 
         // lock access to the db in case a deletion plan is progress, unless the caller just
