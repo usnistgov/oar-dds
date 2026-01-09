@@ -44,7 +44,6 @@ public interface ResourceResolver {
      * return a NERDm metadata record corresponding to the given ID.  The implementation should attempt
      * to recognize the type of identifier provided and return the appropriate corresponding metadata.
      * If no record exists with the identifier, null is returned.
-     * @throws AmbiguousIDException  if the identifier cannot be resolved because its type is ambiguous
      * @throws OARServiceException   if something goes wrong with the interaction with resolving service.
      */
     public JSONObject resolve(String id) throws OARServiceException;
