@@ -2,7 +2,6 @@ package gov.nist.oar.distrib.service.rpa;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gov.nist.oar.distrib.service.RPACachingService;
 import gov.nist.oar.distrib.service.rpa.exceptions.InvalidRequestException;
 import gov.nist.oar.distrib.service.rpa.exceptions.RequestProcessingException;
 import gov.nist.oar.distrib.service.rpa.model.EmailInfo;
@@ -38,26 +37,6 @@ public class RecordResponseHandlerImpl implements RecordResponseHandler {
     private final RPAConfiguration rpaConfiguration;
 
     private RPADatasetCacher rpaDatasetCacher;
-
-    /**
-     * Constructs a new instance of the RecordResponseHandlerImpl class with the given {@link RPAConfiguration} and
-     * {@link HttpURLConnection}.
-     *
-     * @param rpaConfiguration  the {@link RPAConfiguration} to use for email notifications
-     * @param connectionFactory the {@link HttpURLConnection} factory to use for email notifications
-     * @param rpaCachingService the RPA caching service to use (for local cache mode)
-     * @deprecated Use the constructor with RPADatasetCacher instead for better flexibility
-     */
-    @Deprecated
-    public RecordResponseHandlerImpl(RPAConfiguration rpaConfiguration,
-                                     HttpURLConnectionFactory connectionFactory,
-                                     RPACachingService rpaCachingService) {
-        this.rpaConfiguration = rpaConfiguration;
-        // Set EmailSender
-        this.emailSender = new EmailSender(rpaConfiguration, connectionFactory);
-        // Set RPADatasetCacher
-        this.rpaDatasetCacher = new DefaultRPADatasetCacher(rpaCachingService);
-    }
 
     /**
      * Constructs a new instance of the RecordResponseHandlerImpl class with the given configuration

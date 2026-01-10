@@ -3,7 +3,6 @@ package gov.nist.oar.distrib.service.rpa;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gov.nist.oar.distrib.service.RPACachingService;
 import gov.nist.oar.distrib.service.rpa.exceptions.InvalidRequestException;
 import gov.nist.oar.distrib.service.rpa.exceptions.RecordNotFoundException;
 import gov.nist.oar.distrib.service.rpa.exceptions.RequestProcessingException;
@@ -150,28 +149,21 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
     }
 
     /**
-     * Constructs a new instance of the service using the given RPA configuration.
-     *
-     * @param rpaConfiguration The RPA configuration to use for this service.
-     * @param rpaCachingService The RPA caching service to use (for local cache mode).
-     */
-    public HttpURLConnectionRPARequestHandlerService(RPAConfiguration rpaConfiguration,
-                                                     RPACachingService rpaCachingService) {
-        this(rpaConfiguration, rpaCachingService, null);
-    }
-
-    /**
      * Constructs a new instance of the service using the given RPA configuration and dataset cacher.
      * <p>
-     * This constructor allows injection of a custom RPADatasetCacher, enabling remote cache mode
-     * where caching is delegated to the cache-mgmt service instead of using local cache.
+     * In the microservices architecture, the RPADatasetCacher is always a RemoteRPADatasetCacher
+     * that delegates caching operations to the cache-mgmt service.
+     * <p>
+     * <b>Note:</b> The rpaCachingService parameter is kept for API compatibility but is ignored.
+     * In the monolith, this was used to create a DefaultRPADatasetCacher. In microservices,
+     * pass null for rpaCachingService and provide the RemoteRPADatasetCacher directly.
      *
      * @param rpaConfiguration The RPA configuration to use for this service.
-     * @param rpaCachingService The RPA caching service (can be null if using remote cacher).
-     * @param rpaDatasetCacher The dataset cacher to use (if null, uses DefaultRPADatasetCacher).
+     * @param rpaCachingService Ignored - kept for API compatibility, pass null.
+     * @param rpaDatasetCacher The dataset cacher (should be RemoteRPADatasetCacher in microservices).
      */
     public HttpURLConnectionRPARequestHandlerService(RPAConfiguration rpaConfiguration,
-                                                     RPACachingService rpaCachingService,
+                                                     Object rpaCachingService,
                                                      RPADatasetCacher rpaDatasetCacher) {
         // Initialize instance variables
         this.rpaConfiguration = rpaConfiguration;
@@ -187,12 +179,11 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         this.recaptchaHelper = new RecaptchaHelper();
         this.recaptchaHelper.setHttpURLConnectionFactory(this.connectionFactory);
 
-        // Set RPADatasetCacher - use injected cacher if provided, otherwise create default
-        if (rpaDatasetCacher != null) {
-            this.rpaDatasetCacher = rpaDatasetCacher;
-        } else if (rpaCachingService != null) {
-            this.rpaDatasetCacher = new DefaultRPADatasetCacher(rpaCachingService);
+        // Set RPADatasetCacher - must be provided (RemoteRPADatasetCacher in microservices)
+        if (rpaDatasetCacher == null) {
+            throw new IllegalArgumentException("RPADatasetCacher must be provided");
         }
+        this.rpaDatasetCacher = rpaDatasetCacher;
 
         // Set RecordResponseHandler
         this.recordResponseHandler = new RecordResponseHandlerImpl(this.rpaConfiguration, this.connectionFactory,

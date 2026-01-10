@@ -1,6 +1,5 @@
 package gov.nist.oar.distrib.web;
 
-import gov.nist.oar.distrib.service.RPACachingService;
 import gov.nist.oar.distrib.service.rpa.RPARequestHandler;
 import gov.nist.oar.distrib.service.rpa.RecordCreationResult;
 import gov.nist.oar.distrib.service.rpa.exceptions.InvalidRequestException;
@@ -14,11 +13,9 @@ import gov.nist.oar.distrib.service.rpa.model.RecordPatch;
 import gov.nist.oar.distrib.service.rpa.model.RecordStatus;
 import gov.nist.oar.distrib.service.rpa.model.RecordWrapper;
 import gov.nist.oar.distrib.service.rpa.model.UserInfoWrapper;
-import gov.nist.oar.distrib.cachemgr.CacheManagementException;
 import io.jsonwebtoken.JwtException;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,37 +88,23 @@ public class RPARequestHandlerController {
      * Constructs a new RPARequestHandlerController.
      * <p>
      * Initializes the service, request sanitizer, and JWT token validator using the
-     * provided RPA service provider
-     * and caching service.
+     * provided RPA configuration.
+     * <p>
+     * In the microservices architecture, the RPARequestHandler is created by
+     * RestrictedAccessServiceApplication and uses RemoteRPADatasetCacher to
+     * delegate caching operations to the cache-mgmt service.
      *
-     * @param rpaServiceProvider The service provider for RPA-related services.
-     * @param rpaCachingService  The caching service for storing and retrieving RPA
-     *                           data.
+     * @param rpaConfiguration The RPA configuration
+     * @param rpaRequestHandler The RPA request handler bean
+     * @param asyncExecutor The async executor for background operations
      */
     @Autowired
-    public RPARequestHandlerController(RPAServiceProvider rpaServiceProvider,
-            RPACachingServiceProvider cachingProvider,
-            S3Client s3,
-            RPAAsyncExecutor asyncExecutor)
-            throws ConfigurationException, IOException, CacheManagementException {
-        this(rpaServiceProvider, getCachingServiceFromProvider(cachingProvider, s3), asyncExecutor);
-    }
-
-    protected static RPACachingService getCachingServiceFromProvider(RPACachingServiceProvider cachingProvider,
-            S3Client s3)
-            throws ConfigurationException, IOException, CacheManagementException {
-        if (cachingProvider == null || !cachingProvider.canCreateService())
-            return null;
-        return cachingProvider.getRPACachingService(s3);
-    }
-
-    public RPARequestHandlerController(RPAServiceProvider rpaServiceProvider,
-            RPACachingService cachingService,
+    public RPARequestHandlerController(RPAConfiguration rpaConfiguration,
+            RPARequestHandler rpaRequestHandler,
             RPAAsyncExecutor asyncExecutor) {
-        if (cachingService != null && rpaServiceProvider != null)
-            this.service = rpaServiceProvider.getRPARequestHandler(cachingService);
+        this.service = rpaRequestHandler;
         this.requestSanitizer = new RequestSanitizer();
-        this.configuration = rpaServiceProvider.getRpaConfiguration();
+        this.configuration = rpaConfiguration;
         this.jwtTokenValidator = new JwtTokenValidator(this.configuration);
         this.recaptchaHelper = new RecaptchaVerificationHelper(this.configuration);
         this.asyncExecutor = asyncExecutor;
