@@ -1,8 +1,0 @@
-# Local development configuration for Dataset Access Service
-
-dataset-access:
-  download:
-    buffer-size: 4096
-    max-concurrent-downloads: 5
-  cache:
-    ttl-seconds: 300  # 5 minutes for faster testing
