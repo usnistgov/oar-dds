@@ -1,6 +1,9 @@
 spring:
   application:
     name: restricted-access-service
+  main:
+    # Required because cache-manager-client module also has @FeignClient for cache-mgmt-service
+    allow-bean-definition-overriding: true
   cloud:
     config:
       uri: ${CONFIG_SERVER_URI:http://localhost:8888}
