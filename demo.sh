@@ -84,6 +84,7 @@ cmd_help() {
     echo "  test                 Run the full test suite"
     echo "  workflow             Test dataset-access ↔ cache-mgmt workflow"
     echo "  bundle               Test bundle plan and download workflow"
+    echo "  rpa                  Test Restricted Public Access (RPA) caching workflow"
     echo "  cache                Inspect cache state and contents"
     echo "  cache-clear          Clear all cached files"
     echo "  logs [service]       View logs (all or specific service)"
@@ -96,6 +97,7 @@ cmd_help() {
     echo "  ./demo.sh -i setup           # Interactive setup with pauses"
     echo "  ./demo.sh workflow           # Test inter-service communication"
     echo "  ./demo.sh bundle             # Test bundle plan and download"
+    echo "  ./demo.sh rpa                # Test RPA caching workflow"
     echo "  ./demo.sh cache              # View cache state"
     echo "  ./demo.sh logs cache-mgmt    # View cache-mgmt logs"
     echo "  ./demo.sh ui                 # Start Angular dashboard"
@@ -482,6 +484,178 @@ for b in d.get('bundleNameFilePathUrl', []):
 }
 
 # ============================================
+# COMMAND: rpa
+# ============================================
+cmd_rpa() {
+    print_header "Restricted Public Access (RPA) Caching Workflow Test"
+    echo ""
+    echo "This test demonstrates the RPA caching workflow:"
+    echo "  1. Cache a dataset for RPA access (generates random ID)"
+    echo "  2. Retrieve cached objects metadata"
+    echo "  3. Uncache the RPA session"
+    echo ""
+    echo "Note: In production, restricted-access-service handles Salesforce workflow"
+    echo "and delegates caching to cache-mgmt-service. This test exercises cache-mgmt directly."
+    echo ""
+    wait_for_input
+
+    # RPA dataset ID (uses mds1491-rpa bags if available, fallback to mds1491)
+    RPA_DATASET="mds1491-rpa"
+    CACHE_RPA_URL="$CACHE_MGMT_URL/cache/rpa"
+
+    # Step 1: Check if RPA test data exists
+    print_step "Step 1: Checking for RPA test data..."
+    if docker exec oar-ms-cache-mgmt ls /data/bags/${RPA_DATASET}* 2>/dev/null | head -1 > /dev/null 2>&1; then
+        print_success "RPA test bags found for $RPA_DATASET"
+    else
+        print_warning "No RPA-specific bags found, using regular dataset: $DATASET_ID"
+        RPA_DATASET="$DATASET_ID"
+    fi
+    echo ""
+    wait_for_input
+
+    # Step 2: Cache dataset for RPA
+    print_step "Step 2: Caching dataset for RPA access..."
+    echo "  PUT $CACHE_RPA_URL/$RPA_DATASET"
+    echo ""
+    echo "  This triggers:"
+    echo "    - Random ID generation (rpa-XXXXXXXXXXXXXXXXXXXXX)"
+    echo "    - ROLE_RESTRICTED_DATA preference for volume selection"
+    echo "    - All files tagged with random ID prefix"
+    echo ""
+
+    RPA_RESPONSE=$(curl -s -X PUT "$CACHE_RPA_URL/$RPA_DATASET" 2>/dev/null)
+
+    if echo "$RPA_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if 'randomId' in d else 1)" 2>/dev/null; then
+        RANDOM_ID=$(echo "$RPA_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('randomId',''))" 2>/dev/null)
+        FILE_COUNT=$(echo "$RPA_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('fileCount',0))" 2>/dev/null)
+        print_success "Dataset cached for RPA access"
+        echo ""
+        echo "  Response:"
+        echo "$RPA_RESPONSE" | python3 -m json.tool 2>/dev/null | sed 's/^/    /'
+        echo ""
+        echo -e "  ${CYAN}Random ID: $RANDOM_ID${NC}"
+        echo -e "  ${CYAN}Files cached: $FILE_COUNT${NC}"
+    else
+        print_error "Failed to cache dataset for RPA"
+        echo "  Response:"
+        echo "$RPA_RESPONSE" | head -c 500 | sed 's/^/    /'
+        echo ""
+        return 1
+    fi
+    echo ""
+    wait_for_input
+
+    # Step 3: Get cached objects by random ID
+    print_step "Step 3: Retrieving cached objects by random ID..."
+    echo "  GET $CACHE_RPA_URL/objects/$RANDOM_ID"
+    echo ""
+
+    OBJECTS_RESPONSE=$(curl -s "$CACHE_RPA_URL/objects/$RANDOM_ID" 2>/dev/null)
+
+    if echo "$OBJECTS_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if 'objects' in d else 1)" 2>/dev/null; then
+        OBJ_COUNT=$(echo "$OBJECTS_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('objectCount',0))" 2>/dev/null)
+        print_success "Retrieved $OBJ_COUNT cached objects"
+        echo ""
+        echo "  Objects:"
+        echo "$OBJECTS_RESPONSE" | python3 -c "
+import sys,json
+d = json.load(sys.stdin)
+for obj in d.get('objects', [])[:5]:
+    name = obj.get('name', 'unknown')
+    size = obj.get('size', 0)
+    cached = '✓' if obj.get('cached') else '○'
+    print(f'    {cached} {name:<40} {size:>10,} bytes')
+if len(d.get('objects', [])) > 5:
+    print(f'    ... and {len(d.get(\"objects\", []))-5} more files')
+" 2>/dev/null
+    else
+        print_warning "Could not retrieve cached objects"
+        echo "  Response: $OBJECTS_RESPONSE"
+    fi
+    echo ""
+    wait_for_input
+
+    # Step 4: Check cache volumes for restricted data
+    print_step "Step 4: Checking cache volume state..."
+    echo ""
+    curl -s "$CACHE_MGMT_URL/cache/volumes/" | python3 -c "
+import sys,json
+data = json.load(sys.stdin)
+print('  Volume      Files    Size         Roles')
+print('  ' + '-' * 50)
+for v in data:
+    roles = 'rpa' if 'rpa' in v.get('name','').lower() or v.get('roles',0) >= 32 else 'general'
+    print(f\"  {v['name']:<10}  {v['filecount']:>5}    {v['totalsize']:>10,}   {roles}\")
+" 2>/dev/null
+    echo ""
+    wait_for_input
+
+    # Step 5: Uncache RPA objects
+    print_step "Step 5: Uncaching RPA session..."
+    echo "  DELETE $CACHE_RPA_URL/objects/$RANDOM_ID"
+    echo ""
+    echo "  In production, this happens when:"
+    echo "    - RPA session expires (2 weeks default)"
+    echo "    - User downloads complete"
+    echo "    - Request declined"
+    echo ""
+
+    UNCACHE_RESPONSE=$(curl -s -X DELETE "$CACHE_RPA_URL/objects/$RANDOM_ID" 2>/dev/null)
+
+    if echo "$UNCACHE_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('success') else 1)" 2>/dev/null; then
+        UNCACHED=$(echo "$UNCACHE_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('uncachedCount',0))" 2>/dev/null)
+        print_success "Uncached $UNCACHED objects"
+        echo "  Response:"
+        echo "$UNCACHE_RESPONSE" | python3 -m json.tool 2>/dev/null | sed 's/^/    /'
+    else
+        print_warning "Uncache response:"
+        echo "$UNCACHE_RESPONSE" | head -c 200 | sed 's/^/    /'
+    fi
+    echo ""
+    wait_for_input
+
+    # Step 6: Verify cleanup
+    print_step "Step 6: Verifying cleanup..."
+    VERIFY_RESPONSE=$(curl -s "$CACHE_RPA_URL/objects/$RANDOM_ID" 2>/dev/null)
+    REMAINING=$(echo "$VERIFY_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('objectCount',0))" 2>/dev/null || echo "0")
+    if [ "$REMAINING" == "0" ]; then
+        print_success "All RPA objects removed from cache"
+    else
+        print_warning "Some objects may remain: $REMAINING"
+    fi
+    echo ""
+
+    # Summary
+    print_header "RPA Workflow Test Complete"
+    echo ""
+    echo -e "${BOLD}What happened:${NC}"
+    echo "  1. cache-mgmt generated random ID with 'rpa-' prefix"
+    echo "  2. Files cached with ROLE_RESTRICTED_DATA preference"
+    echo "  3. All files tagged with random ID for session tracking"
+    echo "  4. Objects retrieved by random ID for download"
+    echo "  5. Session cleanup removed all tagged files"
+    echo ""
+    echo -e "${BOLD}Production Architecture:${NC}"
+    echo ""
+    echo "  ┌─────────────────────┐         ┌─────────────────────┐"
+    echo "  │ restricted-access   │         │    cache-mgmt       │"
+    echo "  │     (8086)          │  HTTP   │      (8085)         │"
+    echo "  │                     │────────►│                     │"
+    echo "  │ Salesforce API      │  Feign  │ PDRCacheManager     │"
+    echo "  │ User validation     │◄────────│ Role-based volumes  │"
+    echo "  │ Email notifications │         │ RandomId grouping   │"
+    echo "  └─────────────────────┘         └─────────────────────┘"
+    echo ""
+    echo -e "${BOLD}Key RPA Caching Features:${NC}"
+    echo "  • ROLE_RESTRICTED_DATA  → Routes to RPA-designated volumes"
+    echo "  • ROLE_OLD_RESTRICTED   → For versioned/archived restricted data"
+    echo "  • Random ID prefixing   → Session-based file grouping"
+    echo "  • 2-week TTL            → Automatic expiration"
+    echo ""
+}
+
+# ============================================
 # COMMAND: cache-clear
 # ============================================
 cmd_cache_clear() {
@@ -727,6 +901,9 @@ case $COMMAND in
         ;;
     bundle|bundle-plan|datacart)
         cmd_bundle
+        ;;
+    rpa|restricted|restricted-access)
+        cmd_rpa
         ;;
     cache|inspect)
         cmd_cache
