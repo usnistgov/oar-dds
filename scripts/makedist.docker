@@ -15,30 +15,36 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
 
-# Map of component names to their module paths
-declare -A COMPONENTS=(
-    ["oar-dds-eureka-server"]="infrastructure/eureka-server"
-    ["oar-dds-api-gateway"]="infrastructure/api-gateway"
-    ["oar-dds-dataset-access-service"]="services/dataset-access"
-    ["oar-dds-aip-access-service"]="services/aip-access"
-    ["oar-dds-bundle-plan-service"]="services/bundle-plan"
-    ["oar-dds-data-bundle-service"]="services/data-bundle"
-    ["oar-dds-cache-mgmt-service"]="services/cache-mgmt"
-    ["oar-dds-restricted-access-service"]="services/restricted-access"
-    ["oar-dds-version-service"]="services/version-service"
-)
+# Component to module path mapping (bash 3 compatible)
+get_module_path() {
+    case "$1" in
+        oar-dds-eureka-server)           echo "infrastructure/eureka-server" ;;
+        oar-dds-api-gateway)             echo "infrastructure/api-gateway" ;;
+        oar-dds-dataset-access-service)  echo "services/dataset-access" ;;
+        oar-dds-aip-access-service)      echo "services/aip-access" ;;
+        oar-dds-bundle-plan-service)     echo "services/bundle-plan" ;;
+        oar-dds-data-bundle-service)     echo "services/data-bundle" ;;
+        oar-dds-cache-mgmt-service)      echo "services/cache-mgmt" ;;
+        oar-dds-restricted-access-service) echo "services/restricted-access" ;;
+        oar-dds-version-service)         echo "services/version-service" ;;
+        *)                               echo "" ;;
+    esac
+}
+
+# All component names
+ALL_COMPONENTS="oar-dds-eureka-server oar-dds-api-gateway oar-dds-dataset-access-service oar-dds-aip-access-service oar-dds-bundle-plan-service oar-dds-data-bundle-service oar-dds-cache-mgmt-service oar-dds-restricted-access-service oar-dds-version-service"
 
 # Get list of components to build
 if [ $# -eq 0 ]; then
-    REQUESTED_COMPONENTS=("${!COMPONENTS[@]}")
+    REQUESTED_COMPONENTS="$ALL_COMPONENTS"
 else
-    REQUESTED_COMPONENTS=("$@")
+    REQUESTED_COMPONENTS="$*"
 fi
 
 echo "======================================"
 echo "Building OAR-DDS Microservices"
 echo "======================================"
-echo "Components: ${REQUESTED_COMPONENTS[*]}"
+echo "Components: $REQUESTED_COMPONENTS"
 echo "Dist dir: $DIST_DIR"
 echo ""
 
@@ -51,13 +57,14 @@ cd "$REPO_ROOT"
 mvn clean package -DskipTests -q
 
 # Copy requested components to dist directory
-for comp in "${REQUESTED_COMPONENTS[@]}"; do
-    if [ -z "${COMPONENTS[$comp]}" ]; then
+for comp in $REQUESTED_COMPONENTS; do
+    module_path=$(get_module_path "$comp")
+
+    if [ -z "$module_path" ]; then
         echo "WARNING: Unknown component: $comp"
         continue
     fi
 
-    module_path="${COMPONENTS[$comp]}"
     jar_pattern="$REPO_ROOT/$module_path/target/*.jar"
 
     # Find the JAR file (exclude sources and javadoc)
