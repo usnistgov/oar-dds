@@ -57,17 +57,21 @@ spring:
               args:
                 parts: 2
 
-        # Restricted Access Service routes
-        - id: restricted-access-service
-          uri: lb://restricted-access-service
-          predicates:
-            - Path=/rpa/**
-
         # Version Service routes
         - id: version-service
           uri: lb://version-service
           predicates:
             - Path=/version/**
+          filters:
+            - name: StripPrefix
+              args:
+                parts: 1
+
+        # Restricted Access Service routes (no filters)
+        - id: restricted-access-service
+          uri: lb://restricted-access-service
+          predicates:
+            - Path=/rpa/**
 
       # Global CORS configuration
       globalcors:

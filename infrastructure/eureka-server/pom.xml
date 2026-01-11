@@ -7,15 +7,15 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>eureka-server</artifactId>
+    <artifactId>oar-dds-eureka-server</artifactId>
     <packaging>jar</packaging>
 
-    <name>Eureka Server</name>
+    <name>OAR DDS - Eureka Server</name>
     <description>Service Discovery Server using Netflix Eureka</description>
 
     <dependencies>
