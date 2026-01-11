@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
@@ -25,12 +24,15 @@ import gov.nist.oar.distrib.StorageVolumeException;
 import gov.nist.oar.distrib.service.DefaultPreservationBagService;
 import gov.nist.oar.distrib.service.FileDownloadService;
 import gov.nist.oar.distrib.service.NerdmDownloadService;
+import gov.nist.oar.distrib.service.NerdmDrivenFromBagFileDownloadService;
 import gov.nist.oar.distrib.service.PreservationBagService;
+import gov.nist.oar.distrib.service.RemoteCacheEnabledFileDownloadService;
 import gov.nist.oar.distrib.storage.AWSS3LongTermStorage;
 import gov.nist.oar.distrib.storage.FilesystemLongTermStorage;
-import gov.nist.oar.distrib.web.CacheManagerProvider;
 import gov.nist.oar.distrib.web.ConfigurationException;
-import gov.nist.oar.distrib.web.NISTCacheManagerConfig;
+import gov.nist.oar.common.cache.client.CacheManagerClient;
+import gov.nist.oar.common.cache.impl.spring.SpringCacheManagerClient;
+import gov.nist.oar.common.cache.impl.spring.feign.CacheManagementFeignClient;
 
 import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -132,38 +134,32 @@ public class DatasetAccessServiceApplication {
     }
 
     /**
-     * The service implementation to use to download data products.
+     * The CacheManagerClient for communicating with the cache-mgmt service.
      */
     @Bean
-    public FileDownloadService getFileDownloadService(PreservationBagService bagsvc, MimetypesFileTypeMap mimemap,
-                                                      CacheManagerProvider cmprovider)
-        throws ConfigurationException
+    public CacheManagerClient getCacheManagerClient(CacheManagementFeignClient feignClient) {
+        return new SpringCacheManagerClient(feignClient);
+    }
+
+    /**
+     * The service implementation to use to download data products.
+     * Uses the remote cache-mgmt service for caching operations.
+     */
+    @Bean
+    public FileDownloadService getFileDownloadService(PreservationBagService bagsvc,
+                                                      MimetypesFileTypeMap mimemap,
+                                                      CacheManagerClient cacheClient)
     {
-        return cmprovider.getFileDownloadService(bagsvc, mimemap);
+        // Create fallback service for direct bag access
+        FileDownloadService fallbackService = new NerdmDrivenFromBagFileDownloadService(bagsvc, mimemap);
+
+        // Return remote-enabled service that delegates caching to cache-mgmt
+        return new RemoteCacheEnabledFileDownloadService(fallbackService, cacheClient, mimemap, false);
     }
 
     @Bean
     public NerdmDownloadService getNerdmDownloadService() {
         return new NerdmDownloadService(nerdmBaseUrl);
-    }
-
-    /**
-     * Create a configuration object for the cache manager
-     */
-    @Bean
-    @ConfigurationProperties("distrib.cachemgr")
-    public NISTCacheManagerConfig getCacheManagerConfig() throws ConfigurationException {
-        return new NISTCacheManagerConfig();
-    }
-
-    /**
-     * The configured CacheManagerProvider to use
-     */
-    @Bean
-    public CacheManagerProvider getCacheManagerProvider(NISTCacheManagerConfig config,
-                                                        BagStorage bagstor, S3Client s3client)
-    {
-        return new CacheManagerProvider(config, bagstor, s3client);
     }
 
     /**

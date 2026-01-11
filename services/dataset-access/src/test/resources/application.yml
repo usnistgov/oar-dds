@@ -1,0 +1,25 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+
+management:
+  tracing:
+    enabled: false
+  zipkin:
+    tracing:
+      enabled: false
+
+server:
+  port: 0 # Avoid conflict with actual service running port 8083
+
+distrib:
+  bagstore:
+    mode: local
+    location: ${basedir}/src/test/resources
+  baseurl: http://localhost/oar-distrb-service
+  nerdm:
+    baseurl: http://localhost/od/id
+
+logging:
+  path: ${basedir}/target/surefire-reports

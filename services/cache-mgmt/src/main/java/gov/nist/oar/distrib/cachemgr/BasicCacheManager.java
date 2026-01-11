@@ -19,8 +19,6 @@ import gov.nist.oar.distrib.ObjectNotFoundException;
 import org.json.JSONObject;
 import org.json.JSONException;
 
-import java.net.URL;
-
 /**
  * a basic implementation of the base {@link gov.nist.oar.distrib.cachemgr.CacheManager} class.
  * <p>
@@ -169,4 +167,3 @@ public abstract class BasicCacheManager extends CacheManager {
      */
     protected void enrichMetadata(String id, JSONObject mdata) throws CacheManagementException { }
 }
-

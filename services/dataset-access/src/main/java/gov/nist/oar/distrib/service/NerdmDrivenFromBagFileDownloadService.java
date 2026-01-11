@@ -22,7 +22,6 @@ import gov.nist.oar.bags.preservation.BagUtils;
 import gov.nist.oar.bags.preservation.ZipBagUtils;
 
 import org.json.JSONObject;
-import org.json.JSONException;
 
 import java.io.IOException;
 import java.io.FileNotFoundException;

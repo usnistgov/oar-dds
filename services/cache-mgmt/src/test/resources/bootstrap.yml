@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: cache-mgmt-service-test
+  cloud:
+    config:
+      enabled: false

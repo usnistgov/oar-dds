@@ -13,8 +13,6 @@
  */
 package gov.nist.oar.distrib.datapackage;
 
-import java.util.UUID;
-
 /**
  * A representation of a plan for bundling a requested list of data files into one or more data 
  * bundles (zip files).  

@@ -8,12 +8,10 @@ import gov.nist.oar.distrib.service.rpa.model.EmailInfo;
 import gov.nist.oar.distrib.service.rpa.model.EmailInfoWrapper;
 import gov.nist.oar.distrib.service.rpa.model.JWTToken;
 import gov.nist.oar.distrib.service.rpa.model.Record;
-import gov.nist.oar.distrib.service.rpa.model.UserInfo;
 import gov.nist.oar.distrib.web.RPAConfiguration;
 import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -139,8 +137,6 @@ public class RecordResponseHandlerImpl implements RecordResponseHandler {
         }
     }
 
-
-
     /**
      * Called when a record update operation has been approved.
      *
@@ -199,7 +195,6 @@ public class RecordResponseHandlerImpl implements RecordResponseHandler {
             throw new RequestProcessingException("Failed to send failure notification email to end user");
         }
     }
-
 
     private class EmailSender {
         /**
@@ -302,7 +297,6 @@ public class RecordResponseHandlerImpl implements RecordResponseHandler {
             LOGGER.debug("EMAIL_INFO=" + emailInfo);
             return this.send(emailInfo) == HttpURLConnection.HTTP_OK;
         }
-
 
         /**
          * Sends a declined email to the end user for the given record.

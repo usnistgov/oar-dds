@@ -28,11 +28,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import gov.nist.oar.common.utils.ServiceVersion;
 
 import gov.nist.oar.distrib.DistributionException;
 import gov.nist.oar.distrib.web.ErrorInfo;
@@ -60,8 +62,21 @@ public class DataBundleAccessController {
 
     Logger logger = LoggerFactory.getLogger(DataBundleAccessController.class);
 
+    private static final ServiceVersion SERVICE_VERSION =
+        new ServiceVersion("data-bundle-service");
+
     @Autowired
     DataPackagingService dpService;
+
+    /**
+     * Return the version of the service.
+     */
+    @Operation(summary = "Return the version data for the service",
+               description = "This returns the name and version label for this service")
+    @GetMapping(value = "/ds/", produces = "application/json")
+    public ServiceVersion.VersionInfo getServiceVersion() {
+        return SERVICE_VERSION.toVersionInfo();
+    }
 
     /**
      * download a bundle of data files requested
@@ -206,7 +221,6 @@ public class DataBundleAccessController {
                                             "Unexpected failure during request: ", ex.getMessage());
         return new ResponseEntity<>(errorInfo, headers, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
 
     /**
      * Create Error Information object to be returned to the client as a result of failed request

@@ -16,7 +16,6 @@ package gov.nist.oar.distrib.cachemgr;
 import gov.nist.oar.distrib.StorageVolumeException;
 
 import java.io.InputStream;
-import java.io.IOException;
 import java.net.URL;
 
 import org.json.JSONObject;

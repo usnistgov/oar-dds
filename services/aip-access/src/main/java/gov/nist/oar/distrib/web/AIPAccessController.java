@@ -12,6 +12,7 @@
 package gov.nist.oar.distrib.web;
 
 import gov.nist.oar.distrib.service.PreservationBagService;
+import gov.nist.oar.common.utils.ServiceVersion;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -73,11 +74,24 @@ public class AIPAccessController {
 
     Logger logger = LoggerFactory.getLogger(AIPAccessController.class);
 
+    private static final ServiceVersion SERVICE_VERSION =
+        new ServiceVersion("aip-access-service");
+
     @Autowired
     PreservationBagService pres;
 
     @Value("${distrib.baseurl}")
     String svcbaseurl;
+
+    /**
+     * Return the version of the service.
+     */
+    @Operation(summary = "Return the version data for the service",
+               description = "This returns the name and version label for this service")
+    @GetMapping(value = "/", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ServiceVersion.VersionInfo getServiceVersion() {
+        return SERVICE_VERSION.toVersionInfo();
+    }
 
     /**
      * stream out the AIP file to the web client.

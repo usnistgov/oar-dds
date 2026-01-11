@@ -25,7 +25,6 @@ import gov.nist.oar.distrib.cachemgr.VolumeStatus;
 import gov.nist.oar.distrib.cachemgr.VolumeConfig;
 import gov.nist.oar.distrib.cachemgr.CacheObjectCheck;
 import gov.nist.oar.distrib.cachemgr.DeletionStrategy;
-import gov.nist.oar.distrib.cachemgr.inventory.JDBCStorageInventoryDB;
 import gov.nist.oar.distrib.cachemgr.inventory.OldSelectionStrategy;
 import gov.nist.oar.distrib.cachemgr.inventory.BigOldSelectionStrategy;
 import gov.nist.oar.distrib.cachemgr.inventory.BySizeSelectionStrategy;

@@ -14,8 +14,6 @@ package gov.nist.oar.distrib.service;
 
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Value;
-
 import gov.nist.oar.distrib.DistributionException;
 import gov.nist.oar.distrib.datapackage.BundleDownloadPlan;
 import gov.nist.oar.distrib.datapackage.BundleRequest;

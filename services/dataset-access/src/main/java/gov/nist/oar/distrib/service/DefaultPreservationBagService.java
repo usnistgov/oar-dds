@@ -31,7 +31,6 @@ import gov.nist.oar.distrib.BagDescription;
 import gov.nist.oar.distrib.Checksum;
 import gov.nist.oar.distrib.DistributionException;
 import gov.nist.oar.distrib.FileDescription;
-import gov.nist.oar.distrib.LongTermStorage;
 import gov.nist.oar.distrib.ResourceNotFoundException;
 import gov.nist.oar.distrib.StreamHandle;
 

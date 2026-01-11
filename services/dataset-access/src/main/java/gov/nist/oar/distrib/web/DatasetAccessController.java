@@ -57,9 +57,9 @@ import gov.nist.oar.distrib.service.FileDownloadService;
 import gov.nist.oar.distrib.service.NerdmDownloadService;
 import gov.nist.oar.distrib.service.NerdmNotFoundException;
 import gov.nist.oar.distrib.service.PreservationBagService;
-import gov.nist.oar.distrib.service.CacheEnabledFileDownloadService;
-import gov.nist.oar.distrib.cachemgr.CacheObject;
-import gov.nist.oar.distrib.cachemgr.CacheManagementException;
+import gov.nist.oar.distrib.service.RemoteCacheEnabledFileDownloadService;
+import gov.nist.oar.common.cache.dto.CacheObjectInfo;
+import gov.nist.oar.common.utils.ServiceVersion;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -97,6 +97,9 @@ public class DatasetAccessController {
 
     Logger logger = LoggerFactory.getLogger(DatasetAccessController.class);
 
+    private static final ServiceVersion SERVICE_VERSION =
+        new ServiceVersion("dataset-access-service");
+
     @Autowired
     PreservationBagService pres;
 
@@ -114,6 +117,17 @@ public class DatasetAccessController {
     // TODO test inputs
 
     // NOTE: The order of the methods with @RequestMapping/@GetMapping matters!
+
+    /**
+     * Return the version of the service.
+     */
+    @Operation(summary = "Return the version data for the service",
+               description = "This returns the name and version label for this service")
+    @GetMapping(value = "/", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ServiceVersion.VersionInfo getServiceVersion() {
+        return SERVICE_VERSION.toVersionInfo();
+    }
 
     /**
      * return a list of descriptions of AIP files available for a given ID. Each
@@ -639,9 +653,9 @@ public class DatasetAccessController {
         StreamHandle sh = null;
         try {
             try {
-                CacheEnabledFileDownloadService cdls = (CacheEnabledFileDownloadService) downl;
-                CacheObject co = cdls.findCachedObject(dsid, filepath, version);
-                if (co != null && co.volume != null) {
+                RemoteCacheEnabledFileDownloadService cdls = (RemoteCacheEnabledFileDownloadService) downl;
+                CacheObjectInfo co = cdls.findCachedObject(dsid, filepath, version);
+                if (co != null && co.getVolumeName() != null) {
                     URL redirect = cdls.redirectFor(co);
                     if (redirect != null) {
                         logger.info("Data File delivered via redirect: {},{}/{},{}",
@@ -649,8 +663,7 @@ public class DatasetAccessController {
                         response.sendRedirect(redirect.toString()); // sends as 302 FOUND
                         return;
                     }
-                    logger.debug("{}/{}: streaming data from cache", dsid, filepath);
-                    sh = cdls.openStreamFor(co);
+                    logger.debug("{}/{}: file is cached but no redirect URL, streaming from source", dsid, filepath);
                 }
                 else {
                     logger.debug("{}/{}: file not found in cache{}.", dsid, filepath,
@@ -658,21 +671,13 @@ public class DatasetAccessController {
                 }
             }
             catch (ClassCastException ex) { /* fall back on direct read */ }
-            catch (CacheManagementException ex) {
-                
-                String file = filepath;
-                if (version != null) file += "#" + version;
-                logger.error("Trouble searching cache for data file: {}/{}: {}",
-                             dsid, file, ex.getMessage());
-                // pass through to fallback
-            }
             catch (IOException ex) {
                 // this can only come from sendRedirect()
                 String file = filepath;
                 if (version != null) file += "#" + version;
                 logger.error("Trouble sending redirect response for {}/{}: {}",
                              dsid, file, ex.getMessage());
-                return; 
+                return;
             }
 
             if (sh == null) {

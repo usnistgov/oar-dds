@@ -14,8 +14,11 @@ import gov.nist.oar.distrib.service.rpa.model.RecordStatus;
 import gov.nist.oar.distrib.service.rpa.model.RecordWrapper;
 import gov.nist.oar.distrib.service.rpa.model.UserInfoWrapper;
 import io.jsonwebtoken.JwtException;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+
+import gov.nist.oar.common.utils.ServiceVersion;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +41,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
-import java.io.IOException;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -83,6 +85,9 @@ public class RPARequestHandlerController {
      * Logger for this class.
      */
     private final static Logger LOGGER = LoggerFactory.getLogger(RPARequestHandlerController.class);
+
+    private static final ServiceVersion SERVICE_VERSION =
+        new ServiceVersion("restricted-access-service");
 
     /**
      * Constructs a new RPARequestHandlerController.
@@ -159,6 +164,16 @@ public class RPARequestHandlerController {
 
     public void setRecaptchaHelper(RecaptchaVerificationHelper recaptchaHelper) {
         this.recaptchaHelper = recaptchaHelper;
+    }
+
+    /**
+     * Return the version of the service.
+     */
+    @Operation(summary = "Return the version data for the service",
+               description = "This returns the name and version label for this service")
+    @GetMapping(value = "/", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ServiceVersion.VersionInfo getServiceVersion() {
+        return SERVICE_VERSION.toVersionInfo();
     }
 
     /**

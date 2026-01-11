@@ -1,6 +1,5 @@
 package gov.nist.oar.distrib.service.rpa;
 
-import gov.nist.oar.distrib.service.rpa.exceptions.RequestProcessingException;
 import gov.nist.oar.distrib.service.rpa.model.Record;
 
 /**
