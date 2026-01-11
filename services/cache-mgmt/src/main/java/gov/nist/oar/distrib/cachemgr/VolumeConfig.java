@@ -55,7 +55,7 @@ public class VolumeConfig {
      * set the status for this configuration
      * @param stat   the status code, normally one of the constants defined in {@link VolumeStatus}
      */
-    public void setStatus(int stat) { status = new Integer(stat); }
+    public void setStatus(int stat) { status = Integer.valueOf(stat); }
 
     /**
      * set the status for this configuration.  This version allows null to be provided as a value.

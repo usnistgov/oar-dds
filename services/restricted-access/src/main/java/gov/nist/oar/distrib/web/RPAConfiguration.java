@@ -1,6 +1,5 @@
 package gov.nist.oar.distrib.web;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -432,7 +431,6 @@ public class RPAConfiguration {
     public EmailTemplate endUserFailureNotificationEmail() {
         return this.getEmailTemplates().get("failure-notification-user");
     }
-
 
     @Override
     public String toString() {

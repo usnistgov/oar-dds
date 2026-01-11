@@ -227,8 +227,10 @@ public class Reservation {
         db.removeObject(vol.getName(), getReservationName(), true);
     }
 
+    @SuppressWarnings("removal")
+    @Override
     protected void finalize() {
-        try { drop(); } catch (InventoryException ex) {} 
+        try { drop(); } catch (InventoryException ex) {}
     }
 
     class CountingInputStream extends InputStream {

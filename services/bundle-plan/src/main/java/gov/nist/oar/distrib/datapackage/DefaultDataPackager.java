@@ -22,8 +22,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -44,7 +42,6 @@ import gov.nist.oar.distrib.DistributionException;
  * @author Deoyani Nandrekar-Heinis
  */
 public class DefaultDataPackager implements DataPackager {
-
 
 	private long mxFileSize;
 	private int mxFilesCount;
@@ -104,7 +101,6 @@ public class DefaultDataPackager implements DataPackager {
 			String filepath = jobject.getFilePath();
 			String downloadurl = jobject.getDownloadUrl();
 			
-			
 			/**
 			 * This section is added to improve logs for each dowload request through bundles.
 			 */
@@ -143,7 +139,6 @@ public class DefaultDataPackager implements DataPackager {
 			if (this.validateUrl(downloadurl)) {
 				
 				URLStatusLocation uLoc = listUrlsStatusSize.get(i);
-				
 				
 				if ((downloadurl.equalsIgnoreCase(uLoc.getRequestedURL())) && this.checkResponse(uLoc)) {
 					InputStream fstream = null;
@@ -310,7 +305,6 @@ public class DefaultDataPackager implements DataPackager {
 
 		}
 	}
-
 
 	/**
 	 * If called for the first time within the Datapackager life cycle, this
@@ -526,7 +520,6 @@ public class DefaultDataPackager implements DataPackager {
 		this.requestedFrom = requestedFrom.replace(".", "-");
 	}
 
-    
     /**
      * Check whether the file is hosted at the given list of servers and then only add the requested IP
      * This is to avoid sending IPs to external hosts which are not managed by our group
@@ -550,5 +543,4 @@ public class DefaultDataPackager implements DataPackager {
 	    return url;
     }
     
-
 }

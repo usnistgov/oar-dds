@@ -7,15 +7,15 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>version-service</artifactId>
+    <artifactId>oar-dds-version-service</artifactId>
     <packaging>jar</packaging>
 
-    <name>Version Service</name>
+    <name>OAR DDS - Version Service</name>
     <description>Lightweight microservice for providing service version information</description>
 
     <dependencies>
@@ -67,6 +67,18 @@
             <artifactId>jackson-databind</artifactId>
         </dependency>
 
+        <!-- Shared Exceptions (for ErrorInfo) -->
+        <dependency>
+            <groupId>gov.nist.oar</groupId>
+            <artifactId>oar-dds-shared-exceptions</artifactId>
+        </dependency>
+
+        <!-- Shared Utils (for ServiceVersion) -->
+        <dependency>
+            <groupId>gov.nist.oar</groupId>
+            <artifactId>oar-dds-shared-utils</artifactId>
+        </dependency>
+
         <!-- SpringDoc OpenAPI (Swagger) -->
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -78,6 +90,19 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.skyscreamer</groupId>
+            <artifactId>jsonassert</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20231013</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

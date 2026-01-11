@@ -18,7 +18,6 @@ import gov.nist.oar.distrib.cachemgr.CacheObject;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.ArrayList;
 
 /**
  * a {@link gov.nist.oar.distrib.cachemgr.SelectionStrategy} (and 

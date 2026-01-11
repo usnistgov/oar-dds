@@ -18,20 +18,16 @@ import gov.nist.oar.distrib.cachemgr.CacheManagementException;
 import gov.nist.oar.distrib.cachemgr.CacheObject;
 import gov.nist.oar.distrib.cachemgr.InventoryException;
 import gov.nist.oar.distrib.cachemgr.VolumeNotFoundException;
-import gov.nist.oar.distrib.cachemgr.pdr.CacheOpts;
 import gov.nist.oar.distrib.DistributionException;
 import gov.nist.oar.distrib.ResourceNotFoundException;
 import gov.nist.oar.distrib.StorageVolumeException;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
-import java.net.MalformedURLException;
 import java.util.Map;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
@@ -41,7 +37,6 @@ import java.util.Set;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.HandlerMapping;
@@ -67,6 +62,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import gov.nist.oar.common.utils.ServiceVersion;
+
 /**
  * a web service controller that provides access to the distribution cache--its contents, its status,
  * and its operation--via its CacheManager.  
@@ -79,6 +76,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class CacheManagementController {
 
     Logger log = LoggerFactory.getLogger(CacheManagementController.class);
+
+    private static final ServiceVersion SERVICE_VERSION =
+        new ServiceVersion("cache-mgmt-service");
 
     PDRCacheManager mgr = null;
     gov.nist.oar.distrib.cachemgr.pdr.HeadBagCacheManager headBagMgr = null;
@@ -107,6 +107,16 @@ public class CacheManagementController {
     private void _checkForManager() throws NotOperatingException {
         if (mgr == null)
             throw new NotOperatingException();
+    }
+
+    /**
+     * Return the version of the service.
+     */
+    @Operation(summary = "Return the version data for the service",
+               description = "This returns the name and version label for this service")
+    @GetMapping(value = "/_version", produces = "application/json")
+    public ServiceVersion.VersionInfo getServiceVersion() {
+        return SERVICE_VERSION.toVersionInfo();
     }
 
     /**
@@ -537,7 +547,6 @@ public class CacheManagementController {
         return new ResponseEntity<String>("Monitor is not running", HttpStatus.NOT_FOUND);
     }
     
-
     /**
      * ensure all the objects in a dataset are cached.  The returned message is the same as
      * {@link #listObjectsFor(String,String)}.

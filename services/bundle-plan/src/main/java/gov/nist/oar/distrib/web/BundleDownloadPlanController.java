@@ -25,10 +25,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import gov.nist.oar.common.utils.ServiceVersion;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -64,8 +66,22 @@ import io.swagger.v3.oas.annotations.responses.*;
 public class BundleDownloadPlanController {
 
     Logger logger = LoggerFactory.getLogger(BundleDownloadPlanController.class);
+
+    private static final ServiceVersion SERVICE_VERSION =
+        new ServiceVersion("bundle-plan-service");
+
     @Autowired
     DataPackagingService df;
+
+    /**
+     * Return the version of the service.
+     */
+    @Operation(summary = "Return the version data for the service",
+               description = "This returns the name and version label for this service")
+    @GetMapping(value = "/ds/", produces = "application/json")
+    public ServiceVersion.VersionInfo getServiceVersion() {
+        return SERVICE_VERSION.toVersionInfo();
+    }
 
     /**
      * The controller api endpoint to accept list of requested files in json format

@@ -38,9 +38,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 
 /**
  * An implementation of the {@link RPARequestHandler} interface that uses HttpURLConnection
@@ -133,7 +131,6 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
     public void setRecaptchaHelper(RecaptchaHelper recaptchaHelper) {
         this.recaptchaHelper = recaptchaHelper;
     }
-
 
     /**
      * Sets the RecordResponseHandler instance to handle the response of the record operations.
@@ -533,7 +530,6 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         }
     }
     
-
     // Method to check if a dataset is pre-approved
     public boolean isPreApprovedDataset(String datasetId) {
         String datasetUrl = constructDatasetUrl(datasetId);
@@ -583,7 +579,6 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         return null; // Return null if metadata fetch fails
     }
     
-
     /**
      * Check if a dataset is pre-approved.  This is done by examining the
      * metadata for the dataset and looking for a component with type
@@ -626,7 +621,6 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         return disallowedCountries != null && disallowedCountries.contains(country);
     }
     
-
     private String prepareRequestPayload(UserInfoWrapper userInfoWrapper) throws JsonProcessingException {
         // Set reCAPTCHA field to null, so it doesn't get serialized. SF service doesn't expect this field
         userInfoWrapper.setRecaptcha(null);
@@ -635,7 +629,6 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         return new ObjectMapper().writeValueAsString(userInfoWrapper);
     }
     
-
     /**
      * Updates the status of a record in the database.
      * <p>
@@ -765,7 +758,6 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         return null;
     }
 
-
     /**
      * Generates an approval status string based on the given status, current date/time, and random ID.
      * The date is in ISO 8601 format. If the status is "Declined", the randomId will not be appended.
@@ -803,6 +795,5 @@ public class HttpURLConnectionRPARequestHandlerService implements RPARequestHand
         }
         return approvalStatus;
     }
-
 
 }

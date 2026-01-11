@@ -13,8 +13,6 @@
 package gov.nist.oar.distrib.datapackage;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.net.MalformedURLException;
 import java.util.zip.ZipOutputStream;
 
 import gov.nist.oar.distrib.DistributionException;
@@ -55,7 +53,6 @@ public interface DataPackager {
      */
     public long getTotalSize() throws IOException;
 
-    
     /***
      * return the requested name for the output zip file.  This interface does not actually assign
      * the name; rather, this method is for the benefit of the creator of the output zip file to 

@@ -32,13 +32,11 @@ import java.sql.Statement;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.io.StringReader;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.ZoneOffset;
@@ -810,7 +808,7 @@ public class JDBCStorageInventoryDB implements StorageInventoryDB {
             _algids = new HashMap<String, Integer>();
 
             while (rs.next()) {
-                _algids.put(rs.getString("name"), new Integer(rs.getInt("id")));
+                _algids.put(rs.getString("name"), Integer.valueOf(rs.getInt("id")));
             }
         } catch (SQLException ex) {
             _algids = null;
@@ -858,7 +856,7 @@ public class JDBCStorageInventoryDB implements StorageInventoryDB {
             _volids = new HashMap<String, Integer>();
 
             while (rs.next()) {
-                _volids.put(rs.getString("name"), new Integer(rs.getInt("id")));
+                _volids.put(rs.getString("name"), Integer.valueOf(rs.getInt("id")));
             }
         } catch (SQLException ex) {
             _volids = null;
@@ -1246,7 +1244,7 @@ public class JDBCStorageInventoryDB implements StorageInventoryDB {
         Collection<String> volnames = volumes();
         Map<String, Long> out = new HashMap<String, Long>(volnames.size());
         for (String name : volnames)
-            out.put(name, new Long(0L));
+            out.put(name, Long.valueOf(0L));
         String sum_sql =
             "SELECT v.name as volume, sum(d.size) as size FROM objects d, volumes v "+
             "WHERE d.volume=v.id and d.cached=true GROUP BY v.name";
@@ -1265,7 +1263,7 @@ public class JDBCStorageInventoryDB implements StorageInventoryDB {
             while (rs.next()) {
                 name = rs.getString(1);
                 if (name != null)
-                    out.put(name, new Long(rs.getLong(2)));
+                    out.put(name, Long.valueOf(rs.getLong(2)));
             }
             return out;
         }

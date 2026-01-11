@@ -7,15 +7,15 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>bundle-plan-service</artifactId>
+    <artifactId>oar-dds-bundle-plan-service</artifactId>
     <packaging>jar</packaging>
 
-    <name>Bundle Download Plan Service</name>
+    <name>OAR DDS - Bundle Plan Service</name>
     <description>Microservice for creating download bundle plans</description>
 
     <dependencies>
@@ -62,6 +62,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- JSR-305 annotations (for Google error_prone compatibility) -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+
         <!-- Feign Client -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -105,23 +111,23 @@
         <!-- Internal common modules -->
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>shared-models</artifactId>
+            <artifactId>oar-dds-shared-models</artifactId>
         </dependency>
 
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>shared-exceptions</artifactId>
+            <artifactId>oar-dds-shared-exceptions</artifactId>
         </dependency>
 
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>shared-utils</artifactId>
+            <artifactId>oar-dds-shared-utils</artifactId>
         </dependency>
 
         <!-- Dataset Access Client for inter-service communication -->
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>dataset-access-client</artifactId>
+            <artifactId>oar-dds-dataset-access-client</artifactId>
         </dependency>
 
         <!-- Jackson for JSON processing -->

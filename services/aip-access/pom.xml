@@ -7,15 +7,15 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>aip-access-service</artifactId>
+    <artifactId>oar-dds-aip-access-service</artifactId>
     <packaging>jar</packaging>
 
-    <name>AIP Access Service</name>
+    <name>OAR DDS - AIP Access Service</name>
     <description>Microservice for AIP file downloads and metadata</description>
 
     <dependencies>
@@ -50,6 +50,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- JSR-305 annotations (for Google error_prone compatibility) -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+
         <!-- Feign Client for inter-service communication -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -76,17 +82,17 @@
         <!-- Internal common modules -->
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>shared-models</artifactId>
+            <artifactId>oar-dds-shared-models</artifactId>
         </dependency>
 
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>shared-exceptions</artifactId>
+            <artifactId>oar-dds-shared-exceptions</artifactId>
         </dependency>
 
         <dependency>
             <groupId>gov.nist.oar</groupId>
-            <artifactId>shared-utils</artifactId>
+            <artifactId>oar-dds-shared-utils</artifactId>
         </dependency>
 
         <!-- Jackson for JSON processing -->
