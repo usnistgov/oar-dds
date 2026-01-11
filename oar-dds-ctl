@@ -104,7 +104,7 @@ service_to_module() {
 # Convert service name to Docker container name
 service_to_container() {
     local svc=$1
-    echo "oar-ms-$svc"
+    echo "oar-dds-$svc"
 }
 
 # Check if service is healthy
@@ -120,7 +120,7 @@ check_health() {
     # Special handling for non-Spring services
     case $name in
         postgres)
-            if docker exec oar-ms-postgres pg_isready -U oar_app > /dev/null 2>&1; then
+            if docker exec oar-dds-postgres pg_isready -U oar_app > /dev/null 2>&1; then
                 echo "UP"
             else
                 echo "DOWN"
@@ -128,7 +128,7 @@ check_health() {
             return
             ;;
         redis)
-            if docker exec oar-ms-redis redis-cli ping > /dev/null 2>&1; then
+            if docker exec oar-dds-redis redis-cli ping > /dev/null 2>&1; then
                 echo "UP"
             else
                 echo "DOWN"
@@ -514,7 +514,7 @@ cmd_ports() {
 # ============================================
 cmd_db_shell() {
     print_header "Database Shell (oar_cache)"
-    docker exec -it oar-ms-postgres psql -U oar_app -d oar_cache
+    docker exec -it oar-dds-postgres psql -U oar_app -d oar_cache
 }
 
 cmd_db_query() {
@@ -523,12 +523,12 @@ cmd_db_query() {
         print_error "Usage: $prog db-query 'SELECT * FROM volumes'"
         exit 1
     fi
-    docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "$sql"
+    docker exec oar-dds-postgres psql -U oar_app -d oar_cache -c "$sql"
 }
 
 cmd_db_volumes() {
     print_header "Cache Volume Statistics"
-    docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "
+    docker exec oar-dds-postgres psql -U oar_app -d oar_cache -c "
         SELECT
             v.name,
             v.capacity,
@@ -553,7 +553,7 @@ cmd_db_clear() {
     print_warning "This will delete all cached object records from the database."
     read -p "Are you sure? (y/N) " confirm
     if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-        docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "DELETE FROM objects;"
+        docker exec oar-dds-postgres psql -U oar_app -d oar_cache -c "DELETE FROM objects;"
         print_success "Cache inventory cleared"
     else
         print_info "Cancelled"
@@ -735,7 +735,7 @@ cmd_version() {
     print_header "Version Information"
 
     # Get from version-service if running
-    local version_info=$(curl -s "http://localhost:8087/ds/" 2>/dev/null)
+    local version_info=$(curl -s "http://localhost:8087/all" 2>/dev/null)
     if [ -n "$version_info" ]; then
         echo "$version_info" | python3 -m json.tool 2>/dev/null
     else
