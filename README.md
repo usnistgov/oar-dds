@@ -11,19 +11,18 @@ oar-dds/
 │   └── dataset-access-client/       # Feign client for dataset-access service
 │
 ├── infrastructure/                  # Infrastructure services
-│   ├── api-gateway/                 # Spring Cloud Gateway (port 8080)
-│   └── eureka-server/               # Service discovery (port 8761)
+│   ├── api-gateway/                 # Spring Cloud Gateway
+│   └── eureka-server/               # Service discovery
 │
 ├── services/                        # Business microservices
-│   ├── dataset-access/              # Dataset file downloads (port 8081)
-│   ├── aip-access/                  # AIP bag access (port 8082)
-│   ├── bundle-plan/                 # Bundle planning (port 8083)
-│   ├── data-bundle/                 # Bundle downloads (port 8084)
-│   ├── cache-mgmt/                  # Cache operations (port 8085)
-│   ├── restricted-access/           # RPA requests (port 8086)
-│   └── version-service/             # Version info (port 8087)
+│   ├── dataset-access/              # Dataset file downloads
+│   ├── aip-access/                  # AIP bag access
+│   ├── bundle-plan/                 # Bundle planning
+│   ├── data-bundle/                 # Bundle downloads
+│   ├── cache-mgmt/                  # Cache operations
+│   ├── restricted-access/           # RPA requests
+│   └── version-service/             # Version info
 │
-├── test-data/                       # Test preservation bags
 ├── docker-compose.yml               # Docker orchestration
 ├── demo.sh                          # CLI for testing workflows
 └── pom.xml                          # Parent POM
@@ -33,25 +32,22 @@ oar-dds/
 
 ### Infrastructure Services
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Config Server | 8888 | Centralized configuration (external, run locally) |
-| Eureka Server | 8761 | Service registry and discovery |
-| API Gateway | 8080 | Unified entry point, routing, load balancing |
-| PostgreSQL | 5433 | Cache inventory database |
-| Redis | 6379 | Session/rate limiting (optional) |
+| Service | Purpose |
+|---------|---------|
+| Eureka Server | Service registry and discovery |
+| API Gateway | Unified entry point, routing, load balancing |
 
 ### Business Services
 
-| Service | Port | Gateway Route | Purpose |
-|---------|------|---------------|---------|
-| dataset-access | 8081 | `/od/ds/**` | Serves dataset files from cache or preservation bags |
-| aip-access | 8082 | `/aip/**` | Archive Information Package access |
-| bundle-plan | 8083 | `/bundle/plan/**` | Creates download plans, validates URLs |
-| data-bundle | 8084 | `/bundle/data/**` | Streams files into zip bundles |
-| cache-mgmt | 8085 | `/cache/**` | Cache volumes, metadata, object management |
-| restricted-access | 8086 | `/rpa/**` | Restricted Public Access request handling |
-| version-service | 8087 | `/version/**` | Build and version information |
+| Service | Gateway Route | Purpose |
+|---------|---------------|---------|
+| dataset-access | `/od/ds/**` | Serves dataset files from cache or preservation bags |
+| aip-access | `/aip/**` | Archive Information Package access |
+| bundle-plan | `/bundle/plan/**` | Creates download plans, validates URLs |
+| data-bundle | `/bundle/data/**` | Streams files into zip bundles |
+| cache-mgmt | `/cache/**` | Cache volumes, metadata, object management |
+| restricted-access | `/rpa/**` | Restricted Public Access request handling |
+| version-service | `/version/**` | Build and version information |
 
 ## Quick Start with Docker
 
@@ -171,39 +167,6 @@ curl -X POST http://localhost:8080/bundle/data/ds/_bundle \
 
 # Verify contents
 unzip -l bundle.zip
-```
-
-## Test Data
-
-The `test-data/` directory contains BagIt preservation bags for testing:
-
-| File | Dataset | Contents |
-|------|---------|----------|
-| `mds1491.1_1_0.mbag0_4-2.zip` | mds1491 | small-1kb.dat, medium-1mb.dat, large-10mb.dat, xlarge-100mb.dat |
-| `mds1491.1_1_0.mbag0_4-1.zip` | mds1491 | Head bag with metadata |
-| `mds1491.mbag0_2-0.zip` | mds1491 | Legacy format bag |
-| `mds2000.1_0_0.mbag0_4-0.zip` | mds2000 | climate-summary.json, stations.txt |
-| `mds3000.1_0_0.mbag0_4-0.zip` | mds3000 | materials.json, properties.csv |
-
-### Bag Structure
-
-```
-mds1491.1_1_0.mbag0_4-2/
-├── bagit.txt                    # BagIt declaration
-├── bag-info.txt                 # Bag metadata
-├── data/                        # Payload files
-│   ├── small-1kb.dat
-│   ├── medium-1mb.dat
-│   ├── large-10mb.dat
-│   └── xlarge-100mb.dat
-├── metadata/                    # NERDm metadata per file
-│   ├── nerdm.json              # Dataset-level metadata
-│   ├── small-1kb.dat/nerdm.json
-│   └── ...
-├── manifest-sha256.txt          # File checksums
-└── multibag/                    # Multi-bag federation info
-    ├── file-lookup.tsv
-    └── member-bags.tsv
 ```
 
 ## Architecture
@@ -334,10 +297,6 @@ bundle_req = {
 resp = requests.post(f"{GATEWAY}/bundle/data/ds/_bundle", json=bundle_req)
 ```
 
-## Repository
-
-**Name:** `oar-dds` (OAR Data Distribution System)
-
 ## Troubleshooting
 
 ### Services fail to start (config server connection)
@@ -384,6 +343,10 @@ Check preservation bag path in config and verify bag exists in mounted volume:
 docker exec oar-ms-cache-mgmt ls -la /data/preservation-bags/
 ```
 
-## License
+## Disclaimer
 
-This software was developed at the National Institute of Standards and Technology by employees of the Federal Government in the course of their official duties.
+NIST-developed software is provided by NIST as a public service. You may use, copy and distribute copies of the software in any medium, provided that you keep intact this entire notice. You may improve, modify and create derivative works of the software or any portion of the software, and you may copy and distribute such modifications or works. Modified works should carry a notice stating that you changed the software and should note the date and nature of any such change. Please explicitly acknowledge the National Institute of Standards and Technology as the source of the software.
+
+NIST-developed software is expressly provided "AS IS." NIST MAKES NO WARRANTY OF ANY KIND, EXPRESS, IMPLIED, IN FACT OR ARISING BY OPERATION OF LAW, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT AND DATA ACCURACY. NIST NEITHER REPRESENTS NOR WARRANTS THAT THE OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE, OR THAT ANY DEFECTS WILL BE CORRECTED. NIST DOES NOT WARRANT OR MAKE ANY REPRESENTATIONS REGARDING THE USE OF THE SOFTWARE OR THE RESULTS THEREOF, INCLUDING BUT NOT LIMITED TO THE CORRECTNESS, ACCURACY, RELIABILITY, OR USEFULNESS OF THE SOFTWARE.
+
+You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
