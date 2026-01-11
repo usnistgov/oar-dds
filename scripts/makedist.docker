@@ -41,9 +41,26 @@ else
     REQUESTED_COMPONENTS="$*"
 fi
 
+# Get version from pom.xml or git describe
+get_version() {
+    # Try to get version from git tag
+    if git describe --tags --exact-match 2>/dev/null; then
+        return
+    fi
+    # Try git describe with abbreviated commit
+    if git describe --tags 2>/dev/null; then
+        return
+    fi
+    # Fall back to pom.xml version
+    grep -m1 '<version>' "$REPO_ROOT/pom.xml" | sed 's/.*<version>\(.*\)<\/version>.*/\1/'
+}
+
+VERSION=$(get_version)
+
 echo "======================================"
 echo "Building OAR-DDS Microservices"
 echo "======================================"
+echo "Version: $VERSION"
 echo "Components: $REQUESTED_COMPONENTS"
 echo "Dist dir: $DIST_DIR"
 echo ""
@@ -55,6 +72,10 @@ mkdir -p "$DIST_DIR"
 echo "Running mvn clean package..."
 cd "$REPO_ROOT"
 mvn clean package -DskipTests -q
+
+# Create VERSION file at repo root (required by localbuild)
+echo "oar-dds $VERSION" > "$REPO_ROOT/VERSION"
+echo "Created VERSION file: oar-dds $VERSION"
 
 # Copy requested components to dist directory
 for comp in $REQUESTED_COMPONENTS; do
@@ -75,18 +96,17 @@ for comp in $REQUESTED_COMPONENTS; do
         exit 1
     fi
 
-    # Copy JAR to dist with standard name
-    dest_name="${comp}.jar"
+    # Copy JAR to dist with versioned name (required by localbuild)
+    dest_name="${comp}-${VERSION}.jar"
     echo "Copying $jar_file -> $DIST_DIR/$dest_name"
     cp "$jar_file" "$DIST_DIR/$dest_name"
 
-    # Create dependency file
-    dep_file="$DIST_DIR/${comp}_dep.json"
-    version=$(basename "$jar_file" | sed 's/.*-\([0-9].*\)\.jar/\1/')
+    # Create dependency file with versioned name
+    dep_file="$DIST_DIR/${comp}-${VERSION}_dep.json"
     cat > "$dep_file" << EOF
 {
     "name": "$comp",
-    "version": "$version",
+    "version": "$VERSION",
     "source": "oar-dds",
     "build_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
