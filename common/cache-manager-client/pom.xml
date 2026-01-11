@@ -7,14 +7,14 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>cache-manager-client</artifactId>
+    <artifactId>oar-dds-cache-manager-client</artifactId>
     <packaging>jar</packaging>
-    <name>OAR Distribution - Cache Manager Client Library</name>
+    <name>OAR DDS - Cache Manager Client</name>
     <description>Thin client library for cache management service communication</description>
 
     <dependencies>
