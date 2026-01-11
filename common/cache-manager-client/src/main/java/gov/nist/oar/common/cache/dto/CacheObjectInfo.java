@@ -101,4 +101,47 @@ public class CacheObjectInfo {
     public boolean isAvailable() {
         return Boolean.TRUE.equals(cached);
     }
+
+    /**
+     * Check if the object is cached (alias for isAvailable).
+     *
+     * @return true if cached, false otherwise
+     */
+    public boolean isCached() {
+        return isAvailable();
+    }
+
+    /**
+     * Get the content type (alias for mimetype).
+     *
+     * @return the content type
+     */
+    public String getContentType() {
+        return mimetype;
+    }
+
+    /**
+     * Get the checksum algorithm (derived from metadata if available).
+     *
+     * @return the checksum algorithm, or "sha256" as default
+     */
+    public String getChecksumAlgorithm() {
+        if (additionalMetadata != null && additionalMetadata.containsKey("checksumAlgorithm")) {
+            return (String) additionalMetadata.get("checksumAlgorithm");
+        }
+        return "sha256";
+    }
+
+    /**
+     * Get a redirect URL for this cached object.
+     * The URL is derived from the volume and object name if the volume supports redirects.
+     *
+     * @return redirect URL if available, null otherwise
+     */
+    public String getRedirectUrl() {
+        if (additionalMetadata != null && additionalMetadata.containsKey("redirectUrl")) {
+            return (String) additionalMetadata.get("redirectUrl");
+        }
+        return null;
+    }
 }

@@ -7,14 +7,14 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>dataset-access-client</artifactId>
+    <artifactId>oar-dds-dataset-access-client</artifactId>
     <packaging>jar</packaging>
-    <name>OAR Distribution - Dataset Access Client Library</name>
+    <name>OAR DDS - Dataset Access Client</name>
     <description>Feign client library for dataset-access service communication</description>
 
     <dependencies>

@@ -4,7 +4,6 @@ import gov.nist.oar.common.cache.dto.CacheObjectInfo;
 import gov.nist.oar.common.cache.dto.CacheObjectSummary;
 import gov.nist.oar.common.cache.exception.CacheClientException;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
