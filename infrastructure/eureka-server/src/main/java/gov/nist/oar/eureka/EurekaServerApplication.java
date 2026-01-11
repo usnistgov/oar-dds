@@ -7,7 +7,7 @@ import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
 /**
  * Eureka Server for Service Discovery.
  *
- * <p>This server maintains a registry of all microservices in the OAR Distribution Service
+ * <p>This server maintains a registry of all microservices in the OAR Data Distribution System
  * ecosystem. Services register themselves with Eureka on startup and send heartbeats to
  * remain registered.
  *

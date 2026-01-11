@@ -7,15 +7,15 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>api-gateway</artifactId>
+    <artifactId>oar-dds-api-gateway</artifactId>
     <packaging>jar</packaging>
 
-    <name>API Gateway</name>
+    <name>OAR DDS - API Gateway</name>
     <description>Spring Cloud Gateway for routing and load balancing</description>
 
     <dependencies>

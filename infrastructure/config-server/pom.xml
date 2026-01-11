@@ -7,15 +7,15 @@
 
     <parent>
         <groupId>gov.nist.oar</groupId>
-        <artifactId>oar-dist-ms</artifactId>
+        <artifactId>oar-dds</artifactId>
         <version>1.0.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>config-server</artifactId>
+    <artifactId>oar-dds-config-server</artifactId>
     <packaging>jar</packaging>
 
-    <name>Config Server</name>
+    <name>OAR DDS - Config Server</name>
     <description>Centralized Configuration Server using Spring Cloud Config</description>
 
     <dependencies>
