@@ -1,0 +1,3 @@
+# Application name is set in bootstrap.yml for config server lookup
+server:
+  port: 8085

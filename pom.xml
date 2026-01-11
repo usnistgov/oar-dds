@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>gov.nist.oar</groupId>
+    <artifactId>oar-dds</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>OAR Data Distribution System</name>
+    <description>Microservices architecture for OAR Data Distribution System</description>
+
+    <properties>
+        <!-- Java Version -->
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Spring Versions -->
+        <spring-boot.version>3.3.0</spring-boot.version>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
+
+        <!-- Library Versions -->
+        <lombok.version>1.18.30</lombok.version>
+        <jackson.version>2.17.1</jackson.version>
+        <commons-io.version>2.15.1</commons-io.version>
+        <commons-lang3.version>3.17.0</commons-lang3.version>
+        <aws-sdk.version>1.12.650</aws-sdk.version>
+        <postgresql.version>42.7.5</postgresql.version>
+        <flyway.version>10.8.1</flyway.version>
+
+        <!-- Test Versions -->
+        <junit.version>5.10.1</junit.version>
+
+        <!-- Plugin Versions -->
+        <maven-compiler-plugin.version>3.12.1</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.2.3</maven-surefire-plugin.version>
+    </properties>
+
+    <modules>
+        <!-- Common Modules -->
+        <module>common/shared-models</module>
+        <module>common/shared-exceptions</module>
+        <module>common/shared-utils</module>
+        <module>common/cache-manager-client</module>
+        <module>common/dataset-access-client</module>
+
+        <!-- Infrastructure Services -->
+        <module>infrastructure/eureka-server</module>
+        <module>infrastructure/config-server</module>
+        <module>infrastructure/api-gateway</module>
+
+        <!-- Microservices (Phase 3) -->
+        <module>services/dataset-access</module>
+        <module>services/aip-access</module>
+        <module>services/bundle-plan</module>
+        <module>services/data-bundle</module>
+        <module>services/cache-mgmt</module>
+        <module>services/restricted-access</module>
+        <module>services/version-service</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring Boot BOM -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Spring Cloud BOM -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Eureka client with exclusion of old javax.annotation-api -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+                <version>4.1.3</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>javax.annotation</groupId>
+                        <artifactId>javax.annotation-api</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <!-- Internal Common Modules -->
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>oar-dds-shared-models</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>oar-dds-shared-exceptions</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>oar-dds-shared-utils</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>oar-dds-cache-manager-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>gov.nist.oar</groupId>
+                <artifactId>oar-dds-dataset-access-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- Jackson -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <!-- Apache Commons -->
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <!-- AWS SDK -->
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-s3</artifactId>
+                <version>${aws-sdk.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-core</artifactId>
+                <version>${aws-sdk.version}</version>
+            </dependency>
+
+            <!-- Database -->
+            <dependency>
+                <groupId>org.postgresql</groupId>
+                <artifactId>postgresql</artifactId>
+                <version>${postgresql.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-core</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-database-postgresql</artifactId>
+                <version>${flyway.version}</version>
+            </dependency>
+
+            <!-- JSR-305 annotations (for Google error_prone compatibility) -->
+            <dependency>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <version>3.0.2</version>
+            </dependency>
+
+            <!-- Testing -->
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <!-- Spring Boot Test with android-json exclusion to avoid conflict with org.json -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-test</artifactId>
+                <version>${spring-boot.version}</version>
+                <scope>test</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.vaadin.external.google</groupId>
+                        <artifactId>android-json</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Spring Boot Maven Plugin -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Maven Compiler Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <release>${java.version}</release>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <!-- Preserve parameter names for Spring MVC and testing -->
+                        <parameters>true</parameters>
+                        <!-- Suppress warnings from annotation processing of third-party dependencies -->
+                        <compilerArgs>
+                            <arg>-Xlint:-processing</arg>
+                        </compilerArgs>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Surefire Plugin (for tests) -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin.version}</version>
+                </plugin>
+
+                <!-- Maven Javadoc Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.6.3</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <doclint>none</doclint>
+                        <quiet>true</quiet>
+                    </configuration>
+                </plugin>
+
+                <!-- Maven Source Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <!-- Aggregate Javadoc for all modules -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <doclint>none</doclint>
+                    <quiet>true</quiet>
+                    <doctitle>OAR Distribution Microservices API - ${project.version}</doctitle>
+                    <windowtitle>OAR Distribution Microservices API</windowtitle>
+                    <bottom>
+                        <![CDATA[Copyright &#169; NIST. Public Domain.]]>
+                    </bottom>
+                    <!-- Group packages by service -->
+                    <groups>
+                        <group>
+                            <title>Cache Management Service</title>
+                            <packages>gov.nist.oar.distrib.cachemgr*</packages>
+                        </group>
+                        <group>
+                            <title>Dataset Access Service</title>
+                            <packages>gov.nist.oar.distrib.service*:gov.nist.oar.distrib.web*</packages>
+                        </group>
+                        <group>
+                            <title>Restricted Public Access Service</title>
+                            <packages>gov.nist.oar.distrib.service.rpa*</packages>
+                        </group>
+                        <group>
+                            <title>Data Packaging Services</title>
+                            <packages>gov.nist.oar.distrib.datapackage*</packages>
+                        </group>
+                        <group>
+                            <title>Storage Layer</title>
+                            <packages>gov.nist.oar.distrib.storage*:gov.nist.oar.distrib:gov.nist.oar.bags*</packages>
+                        </group>
+                        <group>
+                            <title>Common/Clients</title>
+                            <packages>gov.nist.oar.clients*:gov.nist.oar.common*</packages>
+                        </group>
+                    </groups>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

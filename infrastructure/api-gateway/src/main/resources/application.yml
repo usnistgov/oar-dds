@@ -1,0 +1,128 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Enable service discovery locator for automatic route creation
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Explicit route definitions for fine-grained control
+      routes:
+        # Dataset Access Service routes
+        - id: dataset-access-service
+          uri: lb://dataset-access-service
+          predicates:
+            - Path=/od/ds/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /od/ds/(?<segment>.*)
+                replacement: /ds/${segment}
+
+        # AIP Access Service routes
+        - id: aip-access-service
+          uri: lb://aip-access-service
+          predicates:
+            - Path=/aip/**
+
+        # Cache Management Service routes
+        - id: cache-mgmt-service
+          uri: lb://cache-mgmt-service
+          predicates:
+            - Path=/cache/**
+
+        # Bundle Download Plan Service routes
+        - id: bundle-plan-service
+          uri: lb://bundle-plan-service
+          predicates:
+            - Path=/bundle/plan/**
+          filters:
+            - name: StripPrefix
+              args:
+                parts: 2
+
+        # Data Bundle Access Service routes
+        - id: data-bundle-service
+          uri: lb://data-bundle-service
+          predicates:
+            - Path=/bundle/data/**
+          filters:
+            - name: StripPrefix
+              args:
+                parts: 2
+
+        # Version Service routes
+        - id: version-service
+          uri: lb://version-service
+          predicates:
+            - Path=/version/**
+          filters:
+            - name: StripPrefix
+              args:
+                parts: 1
+
+        # Restricted Access Service routes (no filters)
+        - id: restricted-access-service
+          uri: lb://restricted-access-service
+          predicates:
+            - Path=/rpa/**
+
+      # Global CORS configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            maxAge: 3600
+
+# Eureka client configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: false
+    instance-id: ${spring.application.name}:${server.port}
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Resilience4j Circuit Breaker configuration (not currently used, but available for production)
+# resilience4j:
+#   circuitbreaker:
+#     configs:
+#       default:
+#         sliding-window-size: 10
+#         minimum-number-of-calls: 5
+#         wait-duration-in-open-state: 10s
+#         failure-rate-threshold: 50
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.client: INFO
+    root: INFO
