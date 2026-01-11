@@ -1,0 +1,94 @@
+#!/bin/bash
+#
+# makedist.docker -- build OAR-DDS microservices distributions
+#
+# This script builds the JAR files for the oar-dds microservices and copies
+# them to the dist directory for deployment by oar-docker's localdeploy.
+#
+# Usage: makedist.docker [component...]
+#   If no components are specified, all components are built.
+#   Components can be specified by name (e.g., oar-dds-dataset-access-service)
+#
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+DIST_DIR="${DIST_DIR:-$REPO_ROOT/dist}"
+
+# Map of component names to their module paths
+declare -A COMPONENTS=(
+    ["oar-dds-eureka-server"]="infrastructure/eureka-server"
+    ["oar-dds-api-gateway"]="infrastructure/api-gateway"
+    ["oar-dds-dataset-access-service"]="services/dataset-access"
+    ["oar-dds-aip-access-service"]="services/aip-access"
+    ["oar-dds-bundle-plan-service"]="services/bundle-plan"
+    ["oar-dds-data-bundle-service"]="services/data-bundle"
+    ["oar-dds-cache-mgmt-service"]="services/cache-mgmt"
+    ["oar-dds-restricted-access-service"]="services/restricted-access"
+    ["oar-dds-version-service"]="services/version-service"
+)
+
+# Get list of components to build
+if [ $# -eq 0 ]; then
+    REQUESTED_COMPONENTS=("${!COMPONENTS[@]}")
+else
+    REQUESTED_COMPONENTS=("$@")
+fi
+
+echo "======================================"
+echo "Building OAR-DDS Microservices"
+echo "======================================"
+echo "Components: ${REQUESTED_COMPONENTS[*]}"
+echo "Dist dir: $DIST_DIR"
+echo ""
+
+# Create dist directory
+mkdir -p "$DIST_DIR"
+
+# Build all modules with Maven
+echo "Running mvn clean package..."
+cd "$REPO_ROOT"
+mvn clean package -DskipTests -q
+
+# Copy requested components to dist directory
+for comp in "${REQUESTED_COMPONENTS[@]}"; do
+    if [ -z "${COMPONENTS[$comp]}" ]; then
+        echo "WARNING: Unknown component: $comp"
+        continue
+    fi
+
+    module_path="${COMPONENTS[$comp]}"
+    jar_pattern="$REPO_ROOT/$module_path/target/*.jar"
+
+    # Find the JAR file (exclude sources and javadoc)
+    jar_file=$(ls $jar_pattern 2>/dev/null | grep -v sources | grep -v javadoc | head -1)
+
+    if [ -z "$jar_file" ]; then
+        echo "ERROR: JAR not found for $comp in $module_path/target/"
+        exit 1
+    fi
+
+    # Copy JAR to dist with standard name
+    dest_name="${comp}.jar"
+    echo "Copying $jar_file -> $DIST_DIR/$dest_name"
+    cp "$jar_file" "$DIST_DIR/$dest_name"
+
+    # Create dependency file
+    dep_file="$DIST_DIR/${comp}_dep.json"
+    version=$(basename "$jar_file" | sed 's/.*-\([0-9].*\)\.jar/\1/')
+    cat > "$dep_file" << EOF
+{
+    "name": "$comp",
+    "version": "$version",
+    "source": "oar-dds",
+    "build_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+EOF
+done
+
+echo ""
+echo "======================================"
+echo "Build complete!"
+echo "======================================"
+echo "Distributions in $DIST_DIR:"
+ls -la "$DIST_DIR"

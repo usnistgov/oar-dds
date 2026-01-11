@@ -52,3 +52,6 @@ secrets/
 
 # Documentation (keep out of commits)
 docs/
+
+# Build outputs
+dist/

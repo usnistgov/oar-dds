@@ -6,12 +6,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>gov.nist.oar</groupId>
-    <artifactId>oar-dist-ms</artifactId>
+    <artifactId>oar-dds</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>OAR Distribution Service - Microservices</name>
-    <description>Microservices architecture for OAR Distribution Service</description>
+    <name>OAR Data Distribution System</name>
+    <description>Microservices architecture for OAR Data Distribution System</description>
 
     <properties>
         <!-- Java Version -->
@@ -26,7 +26,7 @@
 
         <!-- Library Versions -->
         <lombok.version>1.18.30</lombok.version>
-        <jackson.version>2.16.0</jackson.version>
+        <jackson.version>2.17.1</jackson.version>
         <commons-io.version>2.15.1</commons-io.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
         <aws-sdk.version>1.12.650</aws-sdk.version>
@@ -84,34 +84,47 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- Eureka client with exclusion of old javax.annotation-api -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+                <version>4.1.3</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>javax.annotation</groupId>
+                        <artifactId>javax.annotation-api</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <!-- Internal Common Modules -->
             <dependency>
                 <groupId>gov.nist.oar</groupId>
-                <artifactId>shared-models</artifactId>
+                <artifactId>oar-dds-shared-models</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>gov.nist.oar</groupId>
-                <artifactId>shared-exceptions</artifactId>
+                <artifactId>oar-dds-shared-exceptions</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>gov.nist.oar</groupId>
-                <artifactId>shared-utils</artifactId>
+                <artifactId>oar-dds-shared-utils</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>gov.nist.oar</groupId>
-                <artifactId>cache-manager-client</artifactId>
+                <artifactId>oar-dds-cache-manager-client</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>gov.nist.oar</groupId>
-                <artifactId>dataset-access-client</artifactId>
+                <artifactId>oar-dds-dataset-access-client</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -187,12 +200,33 @@
                 <version>${flyway.version}</version>
             </dependency>
 
+            <!-- JSR-305 annotations (for Google error_prone compatibility) -->
+            <dependency>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <version>3.0.2</version>
+            </dependency>
+
             <!-- Testing -->
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
                 <version>${junit.version}</version>
                 <scope>test</scope>
+            </dependency>
+
+            <!-- Spring Boot Test with android-json exclusion to avoid conflict with org.json -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-test</artifactId>
+                <version>${spring-boot.version}</version>
+                <scope>test</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.vaadin.external.google</groupId>
+                        <artifactId>android-json</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -228,9 +262,14 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven-compiler-plugin.version}</version>
                     <configuration>
-                        <source>${java.version}</source>
-                        <target>${java.version}</target>
+                        <release>${java.version}</release>
                         <encoding>${project.build.sourceEncoding}</encoding>
+                        <!-- Preserve parameter names for Spring MVC and testing -->
+                        <parameters>true</parameters>
+                        <!-- Suppress warnings from annotation processing of third-party dependencies -->
+                        <compilerArgs>
+                            <arg>-Xlint:-processing</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
 
@@ -251,6 +290,13 @@
                         <doclint>none</doclint>
                         <quiet>true</quiet>
                     </configuration>
+                </plugin>
+
+                <!-- Maven Source Plugin -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.0</version>
                 </plugin>
             </plugins>
         </pluginManagement>
