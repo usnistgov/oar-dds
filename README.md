@@ -68,7 +68,7 @@ mvn clean package -DskipTests
 cd /path/to/oar-config-server
 java -jar target/oar-config-server-1.2.0.jar --server.port=8888 &
 
-# Start Docker services
+# Start Docker services (takes about a minute to start)
 cd /path/to/oar-dds
 docker-compose up -d
 
@@ -95,6 +95,8 @@ The `demo.sh` script provides commands for testing and demonstration:
 ```
 
 ## API Examples
+
+> **Note**: The examples below use `mds1491` as a sample dataset ID. Actual file downloads require preservation bags to be mounted in the cache-mgmt service. The cache and version endpoints work without test data.
 
 ### Download a File
 
@@ -215,6 +217,14 @@ Service configurations are managed by an external Config Server (separate `oar-c
 ### External Config Server Setup
 
 The config server runs locally (not in Docker) and Docker services connect via `host.docker.internal:8888`.
+
+Use the `oar-config` repository with the `develop/oar-dds-config` branch:
+```bash
+git clone https://github.com/usnistgov/oar-config.git
+cd oar-config/oar-config-server
+git checkout develop/oar-dds-config
+mvn clean package -DskipTests
+```
 
 Config files are stored in:
 - `oar-config-server/src/main/resources/config/oar-dds/`
