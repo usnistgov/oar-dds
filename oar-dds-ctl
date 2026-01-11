@@ -1,0 +1,892 @@
+#!/bin/bash
+#
+# oar-dds-ctl -- Control script for OAR Distribution Microservices
+#
+# Manage build, test, start, stop, and monitoring of all microservices.
+#
+set -e
+prog=$(basename "$0")
+execdir=$(dirname "$0")
+[ "$execdir" = "" -o "$execdir" = "." ] && execdir=$PWD
+cd "$execdir"
+
+# ============================================
+# Configuration
+# ============================================
+SERVICES=(
+    "dataset-access"
+    "aip-access"
+    "bundle-plan"
+    "data-bundle"
+    "cache-mgmt"
+    "restricted-access"
+    "version-service"
+)
+
+INFRASTRUCTURE=(
+    "eureka-server"
+    "api-gateway"
+)
+
+COMMON_MODULES=(
+    "shared-exceptions"
+    "shared-models"
+    "shared-utils"
+    "cache-manager-client"
+    "dataset-access-client"
+)
+
+# Get service port (bash 3 compatible)
+get_service_port() {
+    case $1 in
+        config-server) echo 8888 ;;
+        eureka-server) echo 8761 ;;
+        api-gateway) echo 8080 ;;
+        dataset-access) echo 8081 ;;
+        aip-access) echo 8082 ;;
+        bundle-plan) echo 8083 ;;
+        data-bundle) echo 8084 ;;
+        cache-mgmt) echo 8085 ;;
+        restricted-access) echo 8086 ;;
+        version-service) echo 8087 ;;
+        postgres) echo 5433 ;;
+        redis) echo 6379 ;;
+        *) echo "" ;;
+    esac
+}
+
+# Options
+VERBOSE=""
+QUIET=""
+SIMULATE=""
+WITH_TESTS=""
+
+# ============================================
+# Helper Functions
+# ============================================
+print_header() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "$1"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
+print_step() { echo "> $1"; }
+print_success() { echo "[OK] $1"; }
+print_warning() { echo "[!] $1"; }
+print_error() { echo "[ERROR] $1"; }
+print_info() { [ -z "$QUIET" ] && echo "  $1"; }
+
+showexec() {
+    [ -z "$QUIET" ] && echo "+ $*"
+    [ -z "$SIMULATE" ] && "$@"
+}
+
+# Convert service name to Maven module path
+service_to_module() {
+    local svc=$1
+    case $svc in
+        dataset-access|aip-access|bundle-plan|data-bundle|cache-mgmt|restricted-access|version-service)
+            echo "services/$svc"
+            ;;
+        eureka-server|api-gateway|config-server)
+            echo "infrastructure/$svc"
+            ;;
+        shared-exceptions|shared-models|shared-utils|cache-manager-client|dataset-access-client)
+            echo "common/$svc"
+            ;;
+        *)
+            echo ""
+            ;;
+    esac
+}
+
+# Convert service name to Docker container name
+service_to_container() {
+    local svc=$1
+    echo "oar-ms-$svc"
+}
+
+# Check if service is healthy
+check_health() {
+    local name=$1
+    local port=$(get_service_port "$name")
+
+    if [ -z "$port" ]; then
+        echo "unknown"
+        return
+    fi
+
+    # Special handling for non-Spring services
+    case $name in
+        postgres)
+            if docker exec oar-ms-postgres pg_isready -U oar_app > /dev/null 2>&1; then
+                echo "UP"
+            else
+                echo "DOWN"
+            fi
+            return
+            ;;
+        redis)
+            if docker exec oar-ms-redis redis-cli ping > /dev/null 2>&1; then
+                echo "UP"
+            else
+                echo "DOWN"
+            fi
+            return
+            ;;
+    esac
+
+    # Spring Boot health endpoint
+    local status=$(curl -s --max-time 3 "http://localhost:$port/actuator/health" 2>/dev/null | \
+        python3 -c "import sys,json; print(json.load(sys.stdin).get('status','DOWN'))" 2>/dev/null || echo "DOWN")
+    echo "$status"
+}
+
+# ============================================
+# COMMAND: help
+# ============================================
+cmd_help() {
+    cat <<EOF
+oar-dds-ctl -- Control script for OAR Distribution Microservices
+
+Usage: $prog [OPTIONS] COMMAND [ARGS...]
+
+Options:
+  -v, --verbose     Show detailed output
+  -q, --quiet       Suppress non-essential output
+  -S, --simulate    Show commands without executing
+  -h, --help        Show this help message
+
+Build Commands:
+  build [--with-tests] [SERVICE...]   Build all or specific services (skips tests by default)
+  build-common                        Build only common modules
+  clean                               Clean all build artifacts
+
+Test Commands:
+  test [SERVICE...]         Run unit tests (all or specific)
+  test-api                  Run API contract tests (Python)
+  test-api-compare          Run API comparison tests (requires monolith)
+  test-report               Generate HTML test report
+
+Docker Commands:
+  start [SERVICE...]        Start all or specific services
+  stop [SERVICE...]         Stop all or specific services
+  restart [SERVICE...]      Restart all or specific services
+  rebuild [SERVICE...]      Rebuild and restart services
+  ps                        List running containers
+  logs [SERVICE] [-f]       View logs (optionally follow)
+
+Status Commands:
+  status                    Show health status of all services
+  eureka                    Show Eureka registered services
+  ports                     Show port mappings
+
+Database Commands:
+  db-shell                  Open psql shell to cache database
+  db-query SQL              Execute SQL query
+  db-volumes                Show cache volume stats
+  db-clear                  Clear cache inventory (objects table)
+
+Config Commands:
+  config [SERVICE]          Show configuration for a service
+  config-refresh [SERVICE]  Refresh configuration from config server
+  config-server-start       Start external config server
+  config-server-stop        Stop external config server
+
+Utility Commands:
+  urls                      Show all service URLs
+  demo WORKFLOW             Run demo workflow (workflow|bundle|rpa)
+  version                   Show version information
+
+Services:
+  ${SERVICES[*]}
+
+Infrastructure:
+  ${INFRASTRUCTURE[*]}
+
+Examples:
+  $prog build                      # Build all services
+  $prog build cache-mgmt           # Build single service
+  $prog test cache-mgmt            # Test single service
+  $prog start                      # Start all Docker services
+  $prog restart dataset-access     # Restart one service
+  $prog logs cache-mgmt -f         # Follow cache-mgmt logs
+  $prog status                     # Check all service health
+  $prog db-shell                   # Open database shell
+
+EOF
+}
+
+# ============================================
+# BUILD COMMANDS
+# ============================================
+cmd_build() {
+    local services=()
+    local skip_tests="-DskipTests"
+
+    # Parse arguments
+    for arg in "$@"; do
+        if [ "$arg" = "--with-tests" ]; then
+            skip_tests=""
+        else
+            services+=("$arg")
+        fi
+    done
+
+    if [ ${#services[@]} -eq 0 ]; then
+        print_header "Building All Services"
+        if [ -z "$skip_tests" ]; then
+            print_step "Running tests..."
+        fi
+        showexec mvn clean package $skip_tests
+    else
+        for svc in "${services[@]}"; do
+            local module=$(service_to_module "$svc")
+            if [ -z "$module" ]; then
+                print_error "Unknown service: $svc"
+                continue
+            fi
+            print_header "Building: $svc"
+            showexec mvn clean package -pl "$module" -am $skip_tests
+        done
+    fi
+    print_success "Build complete"
+}
+
+cmd_build_common() {
+    print_header "Building Common Modules"
+    local modules=""
+    for mod in "${COMMON_MODULES[@]}"; do
+        modules="$modules,common/$mod"
+    done
+    modules=${modules:1}  # Remove leading comma
+    showexec mvn clean install -pl "$modules" -DskipTests
+    print_success "Common modules built"
+}
+
+cmd_clean() {
+    print_header "Cleaning Build Artifacts"
+    showexec mvn clean
+    print_success "Clean complete"
+}
+
+# ============================================
+# TEST COMMANDS
+# ============================================
+cmd_test() {
+    local services=("$@")
+
+    if [ ${#services[@]} -eq 0 ]; then
+        print_header "Running All Unit Tests"
+        showexec mvn test
+    else
+        for svc in "${services[@]}"; do
+            local module=$(service_to_module "$svc")
+            if [ -z "$module" ]; then
+                print_error "Unknown service: $svc"
+                continue
+            fi
+            print_header "Testing: $svc"
+            showexec mvn test -pl "$module"
+        done
+    fi
+}
+
+cmd_test_api() {
+    print_header "Running API Contract Tests (Microservices Only)"
+
+    if [ ! -f "tests/api_contract_test.py" ]; then
+        print_error "API contract tests not found: tests/api_contract_test.py"
+        exit 1
+    fi
+
+    # Check dependencies
+    if ! python3 -c "import pytest" 2>/dev/null; then
+        print_warning "Installing test dependencies..."
+        pip3 install -r tests/requirements.txt
+    fi
+
+    showexec python3 -m pytest tests/api_contract_test.py -v -k "microservices"
+}
+
+cmd_test_api_compare() {
+    print_header "Running API Comparison Tests (vs Monolith)"
+
+    local monolith_url=${MONOLITH_URL:-http://localhost:9090}
+    print_info "Monolith URL: $monolith_url"
+    print_info "Set MONOLITH_URL environment variable to change"
+    echo ""
+
+    showexec python3 -m pytest tests/api_contract_test.py -v -k "compare"
+}
+
+cmd_test_report() {
+    print_header "Generating HTML Test Report"
+
+    showexec python3 -m pytest tests/api_contract_test.py -v -k "microservices" \
+        --html=test-report.html \
+        --self-contained-html \
+        --capture=tee-sys
+
+    print_success "Report generated: test-report.html"
+
+    # Try to open the report
+    if command -v open &> /dev/null; then
+        open test-report.html
+    elif command -v xdg-open &> /dev/null; then
+        xdg-open test-report.html
+    fi
+}
+
+# ============================================
+# DOCKER COMMANDS
+# ============================================
+cmd_start() {
+    local services=("$@")
+
+    # Check config server first
+    local config_status=$(check_health "config-server")
+    if [ "$config_status" != "UP" ]; then
+        print_warning "Config server not running. Start it first:"
+        echo "  $prog config-server-start"
+        echo ""
+    fi
+
+    if [ ${#services[@]} -eq 0 ]; then
+        print_header "Starting All Services"
+        showexec docker-compose up -d
+    else
+        print_header "Starting: ${services[*]}"
+        showexec docker-compose up -d "${services[@]}"
+    fi
+
+    echo ""
+    print_step "Waiting for services to initialize..."
+    sleep 5
+    cmd_status
+}
+
+cmd_stop() {
+    local services=("$@")
+
+    if [ ${#services[@]} -eq 0 ]; then
+        print_header "Stopping All Services"
+        showexec docker-compose down
+    else
+        print_header "Stopping: ${services[*]}"
+        showexec docker-compose stop "${services[@]}"
+    fi
+    print_success "Services stopped"
+}
+
+cmd_restart() {
+    local services=("$@")
+
+    if [ ${#services[@]} -eq 0 ]; then
+        print_header "Restarting All Services"
+        showexec docker-compose restart
+    else
+        print_header "Restarting: ${services[*]}"
+        showexec docker-compose restart "${services[@]}"
+    fi
+
+    echo ""
+    sleep 3
+    cmd_status
+}
+
+cmd_rebuild() {
+    local services=("$@")
+
+    if [ ${#services[@]} -eq 0 ]; then
+        print_header "Rebuilding All Services"
+        showexec mvn clean package -DskipTests
+        showexec docker-compose build
+        showexec docker-compose up -d
+    else
+        for svc in "${services[@]}"; do
+            print_header "Rebuilding: $svc"
+            local module=$(service_to_module "$svc")
+            if [ -n "$module" ]; then
+                showexec mvn clean package -pl "$module" -am -DskipTests
+            fi
+            showexec docker-compose build "$svc"
+            showexec docker-compose up -d "$svc"
+        done
+    fi
+
+    echo ""
+    sleep 3
+    cmd_status
+}
+
+cmd_ps() {
+    print_header "Docker Containers"
+    docker-compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" 2>/dev/null || docker-compose ps
+}
+
+cmd_logs() {
+    local service=$1
+    local follow=""
+
+    # Check for -f flag
+    for arg in "$@"; do
+        [ "$arg" = "-f" ] && follow="-f"
+    done
+
+    if [ -z "$service" ] || [ "$service" = "-f" ]; then
+        docker-compose logs --tail=50 $follow
+    else
+        local container=$(service_to_container "$service")
+        docker logs "$container" --tail=50 $follow 2>&1
+    fi
+}
+
+# ============================================
+# STATUS COMMANDS
+# ============================================
+cmd_status() {
+    print_header "Service Status"
+
+    echo ""
+    printf "  %-20s %-8s %s\n" "SERVICE" "PORT" "STATUS"
+    printf "  %-20s %-8s %s\n" "-------" "----" "------"
+
+    # Infrastructure
+    for svc in "config-server" "eureka-server" "api-gateway" "postgres" "redis"; do
+        local port=$(get_service_port "$svc")
+        local status=$(check_health "$svc")
+        printf "  %-20s %-8s %s\n" "$svc" "$port" "$status"
+    done
+
+    echo ""
+
+    # Application services
+    for svc in "${SERVICES[@]}"; do
+        local port=$(get_service_port "$svc")
+        local status=$(check_health "$svc")
+        printf "  %-20s %-8s %s\n" "$svc" "$port" "$status"
+    done
+
+    echo ""
+}
+
+cmd_eureka() {
+    print_header "Eureka Registered Services"
+
+    local services=$(curl -s "http://localhost:8761/eureka/apps" 2>/dev/null | \
+        grep -o '<name>[^<]*</name>' | sed 's/<[^>]*>//g' | sort -u)
+
+    if [ -n "$services" ]; then
+        echo "$services" | while read svc; do
+            print_success "$svc"
+        done
+    else
+        print_warning "No services registered (Eureka may still be starting)"
+    fi
+    echo ""
+}
+
+cmd_ports() {
+    print_header "Port Mappings"
+
+    echo ""
+    printf "  %-20s %-8s %s\n" "SERVICE" "PORT" "DESCRIPTION"
+    printf "  %-20s %-8s %s\n" "-------" "----" "-----------"
+    printf "  %-20s %-8s %s\n" "config-server" "8888" "Spring Cloud Config"
+    printf "  %-20s %-8s %s\n" "eureka-server" "8761" "Service Discovery"
+    printf "  %-20s %-8s %s\n" "api-gateway" "8080" "API Gateway"
+    printf "  %-20s %-8s %s\n" "dataset-access" "8081" "File Downloads"
+    printf "  %-20s %-8s %s\n" "aip-access" "8082" "AIP/Bag Access"
+    printf "  %-20s %-8s %s\n" "bundle-plan" "8083" "Bundle Planning"
+    printf "  %-20s %-8s %s\n" "data-bundle" "8084" "Bundle Downloads"
+    printf "  %-20s %-8s %s\n" "cache-mgmt" "8085" "Cache Management"
+    printf "  %-20s %-8s %s\n" "restricted-access" "8086" "RPA Requests"
+    printf "  %-20s %-8s %s\n" "version-service" "8087" "Version Info"
+    printf "  %-20s %-8s %s\n" "postgres" "5433" "Cache Database"
+    printf "  %-20s %-8s %s\n" "redis" "6379" "Session Cache"
+    echo ""
+}
+
+# ============================================
+# DATABASE COMMANDS
+# ============================================
+cmd_db_shell() {
+    print_header "Database Shell (oar_cache)"
+    docker exec -it oar-ms-postgres psql -U oar_app -d oar_cache
+}
+
+cmd_db_query() {
+    local sql="$*"
+    if [ -z "$sql" ]; then
+        print_error "Usage: $prog db-query 'SELECT * FROM volumes'"
+        exit 1
+    fi
+    docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "$sql"
+}
+
+cmd_db_volumes() {
+    print_header "Cache Volume Statistics"
+    docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "
+        SELECT
+            v.name,
+            v.capacity,
+            COUNT(o.objid) as file_count,
+            COALESCE(SUM(o.size), 0) as total_size,
+            CASE v.status
+                WHEN 0 THEN 'disabled'
+                WHEN 1 THEN 'readonly'
+                WHEN 2 THEN 'updating'
+                WHEN 3 THEN 'active'
+                ELSE 'unknown'
+            END as status
+        FROM volumes v
+        LEFT JOIN objects o ON v.id = o.volume
+        GROUP BY v.id, v.name, v.capacity, v.status
+        ORDER BY v.name;
+    "
+}
+
+cmd_db_clear() {
+    print_header "Clear Cache Inventory"
+    print_warning "This will delete all cached object records from the database."
+    read -p "Are you sure? (y/N) " confirm
+    if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+        docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "DELETE FROM objects;"
+        print_success "Cache inventory cleared"
+    else
+        print_info "Cancelled"
+    fi
+}
+
+# ============================================
+# CONFIG COMMANDS
+# ============================================
+cmd_config() {
+    local service=$1
+
+    if [ -z "$service" ]; then
+        print_header "Available Configurations"
+        echo ""
+        echo "  Services:"
+        for svc in "${SERVICES[@]}"; do
+            local name="${svc//-/-}"
+            echo "    $svc → ${name}-service.yml"
+        done
+        echo ""
+        echo "  Usage: $prog config <service>"
+        echo ""
+        return
+    fi
+
+    local config_name
+    case $service in
+        dataset-access) config_name="dataset-access-service" ;;
+        aip-access) config_name="aip-access-service" ;;
+        bundle-plan) config_name="bundle-plan-service" ;;
+        data-bundle) config_name="data-bundle-service" ;;
+        cache-mgmt) config_name="cache-management-service" ;;
+        restricted-access) config_name="restricted-access-service" ;;
+        version-service) config_name="version-service" ;;
+        *) config_name="$service" ;;
+    esac
+
+    print_header "Configuration: $config_name"
+    curl -s "http://localhost:8888/$config_name/default" 2>/dev/null | \
+        python3 -m json.tool 2>/dev/null || \
+        print_error "Could not fetch configuration. Is config-server running?"
+}
+
+cmd_config_refresh() {
+    local service=$1
+
+    if [ -z "$service" ]; then
+        print_header "Refreshing All Service Configurations"
+        for svc in "${SERVICES[@]}"; do
+            local port=$(get_service_port "$svc")
+            print_step "Refreshing $svc..."
+            curl -s -X POST "http://localhost:$port/actuator/refresh" 2>/dev/null
+        done
+    else
+        local port=$(get_service_port "$service")
+        if [ -z "$port" ]; then
+            print_error "Unknown service: $service"
+            exit 1
+        fi
+        print_header "Refreshing Configuration: $service"
+        curl -s -X POST "http://localhost:$port/actuator/refresh" 2>/dev/null
+    fi
+    print_success "Configuration refresh requested"
+}
+
+cmd_config_server_start() {
+    print_header "Starting Config Server"
+
+    local config_jar="/Users/one1/oar-config/oar-config-server/target/oar-config-server-1.2.0.jar"
+
+    if [ ! -f "$config_jar" ]; then
+        print_error "Config server JAR not found: $config_jar"
+        echo "  Build it first:"
+        echo "    cd /Users/one1/oar-config/oar-config-server"
+        echo "    mvn clean package -DskipTests"
+        exit 1
+    fi
+
+    # Check if already running
+    if curl -s "http://localhost:8888/actuator/health" 2>/dev/null | grep -q "UP"; then
+        print_warning "Config server already running on port 8888"
+        return
+    fi
+
+    print_step "Starting config server on port 8888..."
+    java -jar "$config_jar" --server.port=8888 > /tmp/config-server.log 2>&1 &
+
+    # Wait for startup
+    print_step "Waiting for config server to start..."
+    for i in {1..30}; do
+        if curl -s "http://localhost:8888/actuator/health" 2>/dev/null | grep -q "UP"; then
+            print_success "Config server started"
+            return
+        fi
+        sleep 1
+    done
+
+    print_error "Config server failed to start. Check /tmp/config-server.log"
+}
+
+cmd_config_server_stop() {
+    print_header "Stopping Config Server"
+
+    local pid=$(pgrep -f "oar-config-server.*8888" || true)
+    if [ -n "$pid" ]; then
+        kill "$pid" 2>/dev/null || true
+        print_success "Config server stopped (PID: $pid)"
+    else
+        print_warning "Config server not running"
+    fi
+}
+
+# ============================================
+# UTILITY COMMANDS
+# ============================================
+cmd_urls() {
+    print_header "Service URLs"
+
+    echo ""
+    echo "API Gateway (unified entry point):"
+    echo "  http://localhost:8080"
+    echo ""
+    echo "Gateway Routes:"
+    echo "  /od/ds/**          -> dataset-access-service"
+    echo "  /aip/**            -> aip-access-service"
+    echo "  /cache/**          -> cache-mgmt-service"
+    echo "  /bundle/plan/**    -> bundle-plan-service"
+    echo "  /bundle/data/**    -> data-bundle-service"
+    echo "  /rpa/**            -> restricted-access-service"
+    echo "  /version/**        -> version-service"
+    echo ""
+    echo "Infrastructure:"
+    echo "  Eureka Dashboard   http://localhost:8761"
+    echo "  Config Server      http://localhost:8888"
+    echo ""
+    echo "Direct Service Access:"
+    for svc in "${SERVICES[@]}"; do
+        local port=$(get_service_port "$svc")
+        printf "  %-18s http://localhost:%s\n" "$svc" "$port"
+    done
+    echo ""
+    echo "Quick Tests:"
+    echo "  curl http://localhost:8080/od/ds/mds1491/small-1kb.dat"
+    echo "  curl http://localhost:8085/cache/volumes/"
+    echo "  curl http://localhost:8085/cache/metadata/mds1491"
+    echo ""
+}
+
+cmd_demo() {
+    local workflow=$1
+
+    case $workflow in
+        workflow|flow)
+            ./demo.sh workflow
+            ;;
+        bundle)
+            ./demo.sh bundle
+            ;;
+        rpa)
+            ./demo.sh rpa
+            ;;
+        cache)
+            ./demo.sh cache
+            ;;
+        *)
+            print_error "Unknown workflow: $workflow"
+            echo ""
+            echo "Available workflows:"
+            echo "  workflow  - Inter-service communication demo"
+            echo "  bundle    - Bundle plan and download demo"
+            echo "  rpa       - Restricted Public Access demo"
+            echo "  cache     - Cache inspection"
+            ;;
+    esac
+}
+
+cmd_version() {
+    print_header "Version Information"
+
+    # Get from version-service if running
+    local version_info=$(curl -s "http://localhost:8087/ds/" 2>/dev/null)
+    if [ -n "$version_info" ]; then
+        echo "$version_info" | python3 -m json.tool 2>/dev/null
+    else
+        # Fallback to pom.xml
+        local version=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+        echo "  Version: $version"
+        echo "  (version-service not running)"
+    fi
+    echo ""
+}
+
+# ============================================
+# Parse Options
+# ============================================
+ARGS=()
+while [ "$1" != "" ]; do
+    case "$1" in
+        -v|--verbose)
+            VERBOSE=1
+            ;;
+        -q|--quiet)
+            QUIET=1
+            ;;
+        -S|--simulate)
+            SIMULATE=1
+            ;;
+        -h|--help)
+            cmd_help
+            exit 0
+            ;;
+        *)
+            ARGS+=("$1")
+            ;;
+    esac
+    shift
+done
+
+# ============================================
+# Command Dispatcher
+# ============================================
+if [ ${#ARGS[@]} -eq 0 ]; then
+    cmd_help
+    exit 0
+fi
+
+CMD=${ARGS[0]}
+CMDARGS=("${ARGS[@]:1}")
+
+case "$CMD" in
+    # Build commands
+    build)
+        cmd_build "${CMDARGS[@]}"
+        ;;
+    build-common)
+        cmd_build_common
+        ;;
+    clean)
+        cmd_clean
+        ;;
+
+    # Test commands
+    test)
+        cmd_test "${CMDARGS[@]}"
+        ;;
+    test-api)
+        cmd_test_api
+        ;;
+    test-api-compare)
+        cmd_test_api_compare
+        ;;
+    test-report)
+        cmd_test_report
+        ;;
+
+    # Docker commands
+    start|up)
+        cmd_start "${CMDARGS[@]}"
+        ;;
+    stop|down)
+        cmd_stop "${CMDARGS[@]}"
+        ;;
+    restart|bounce)
+        cmd_restart "${CMDARGS[@]}"
+        ;;
+    rebuild)
+        cmd_rebuild "${CMDARGS[@]}"
+        ;;
+    ps)
+        cmd_ps
+        ;;
+    logs|log)
+        cmd_logs "${CMDARGS[@]}"
+        ;;
+
+    # Status commands
+    status)
+        cmd_status
+        ;;
+    eureka)
+        cmd_eureka
+        ;;
+    ports)
+        cmd_ports
+        ;;
+
+    # Database commands
+    db-shell|db|shell)
+        cmd_db_shell
+        ;;
+    db-query|query)
+        cmd_db_query "${CMDARGS[@]}"
+        ;;
+    db-volumes|volumes)
+        cmd_db_volumes
+        ;;
+    db-clear|clear-cache)
+        cmd_db_clear
+        ;;
+
+    # Config commands
+    config)
+        cmd_config "${CMDARGS[@]}"
+        ;;
+    config-refresh|refresh)
+        cmd_config_refresh "${CMDARGS[@]}"
+        ;;
+    config-server-start)
+        cmd_config_server_start
+        ;;
+    config-server-stop)
+        cmd_config_server_stop
+        ;;
+
+    # Utility commands
+    urls)
+        cmd_urls
+        ;;
+    demo)
+        cmd_demo "${CMDARGS[@]}"
+        ;;
+    version)
+        cmd_version
+        ;;
+    help)
+        cmd_help
+        ;;
+
+    *)
+        print_error "Unknown command: $CMD"
+        echo ""
+        echo "Run '$prog help' for usage information"
+        exit 1
+        ;;
+esac
