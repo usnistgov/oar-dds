@@ -256,10 +256,10 @@ The config server must be running before starting Docker services.
 docker-compose ps
 
 # View logs for specific service
-docker logs oar-ms-cache-mgmt -f
+docker logs oar-dds-cache-mgmt -f
 
 # Execute command in container
-docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "SELECT * FROM volumes;"
+docker exec oar-dds-postgres psql -U oar_app -d oar_cache -c "SELECT * FROM volumes;"
 
 # Rebuild single service
 docker-compose build cache-mgmt
@@ -350,7 +350,7 @@ Not browser URL like `http://localhost:8080/...`
 
 Check preservation bag path in config and verify bag exists in mounted volume:
 ```bash
-docker exec oar-ms-cache-mgmt ls -la /data/preservation-bags/
+docker exec oar-dds-cache-mgmt ls -la /data/preservation-bags/
 ```
 
 ## Disclaimer
