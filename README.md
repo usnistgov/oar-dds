@@ -10,6 +10,10 @@ oar-dds/
 │   ├── cache-manager-client/        # Feign client for cache-mgmt service
 │   └── dataset-access-client/       # Feign client for dataset-access service
 │
+├── config-server/                   # Config server setup
+│   ├── setup-config.sh              # Pulls config from oar-config repo
+│   └── Dockerfile                   # Config server container
+│
 ├── infrastructure/                  # Infrastructure services
 │   ├── api-gateway/                 # Spring Cloud Gateway
 │   └── eureka-server/               # Service discovery
@@ -24,7 +28,8 @@ oar-dds/
 │   └── version-service/             # Version info
 │
 ├── docker-compose.yml               # Docker orchestration
-├── demo.sh                          # CLI for testing workflows
+├── oar-dds-ctl                      # Service management CLI
+├── demo.sh                          # Workflow demos
 └── pom.xml                          # Parent POM
 ```
 
@@ -56,32 +61,62 @@ oar-dds/
 - Java 17+
 - Maven 3.9+
 - Docker and Docker Compose
-- External `oar-config-server` repository (with config files in `config/oar-dds/`)
 
 ### Build and Run
 
 ```bash
 # Build all services
-mvn clean package -DskipTests
+./oar-dds-ctl build
 
-# Start external config server first (from oar-config-server repo)
-cd /path/to/oar-config-server
-java -jar target/oar-config-server-1.2.0.jar --server.port=8888 &
+# Setup config server (first time only - pulls from oar-config repo)
+cd config-server && ./setup-config.sh && cd ..
 
-# Start Docker services (takes about a minute to start)
-cd /path/to/oar-dds
-docker-compose up -d
+# Start all services
+./oar-dds-ctl start
 
 # Check status
-./demo.sh status
+./oar-dds-ctl status
 
-# Stop Docker services
-docker-compose down
+# Stop all services
+./oar-dds-ctl stop
 ```
 
-### Using demo.sh CLI
+### Using oar-dds-ctl
 
-The `demo.sh` script provides commands for testing and demonstration:
+The `oar-dds-ctl` script manages building, testing, and running services:
+
+```bash
+./oar-dds-ctl help                  # Show all commands
+
+# Build
+./oar-dds-ctl build                 # Build all services
+./oar-dds-ctl build cache-mgmt      # Build single service
+./oar-dds-ctl build --with-tests    # Build with tests
+
+# Docker
+./oar-dds-ctl start                 # Start all services
+./oar-dds-ctl stop                  # Stop all services
+./oar-dds-ctl restart cache-mgmt    # Restart single service
+./oar-dds-ctl rebuild cache-mgmt    # Rebuild and restart
+./oar-dds-ctl logs cache-mgmt -f    # Follow logs
+
+# Status
+./oar-dds-ctl status                # Health check all services
+./oar-dds-ctl eureka                # Show Eureka registrations
+./oar-dds-ctl ports                 # Show port mappings
+
+# Database
+./oar-dds-ctl db-shell              # Open psql shell
+./oar-dds-ctl db-volumes            # Show cache volume stats
+
+# Testing
+./oar-dds-ctl test                  # Run all unit tests
+./oar-dds-ctl test cache-mgmt       # Test single service
+```
+
+### Using demo.sh
+
+The `demo.sh` script provides workflow demonstrations:
 
 ```bash
 ./demo.sh help              # Show available commands
@@ -219,44 +254,16 @@ Service configurations are managed by a Spring Cloud Config Server. The config f
 Use the included setup script to pull configs from the [oar-config](https://github.com/usnistgov/oar-config) repository:
 
 ```bash
-# Setup config server (pulls JAR and config files)
 cd config-server
-./setup-config.sh
-
-# Or specify a branch
-./setup-config.sh develop/oar-dds-config
+./setup-config.sh                         # Use default branch
+./setup-config.sh develop/oar-dds-config  # Or specify a branch
 ```
 
-See [config-server/README.md](config-server/README.md) for detailed instructions.
-
-### Running the Config Server
-
-**Option 1: Standalone (recommended for development)**
-
-```bash
-cd config-server
-java -jar oar-config-server-*.jar \
-  --spring.profiles.active=native \
-  --spring.cloud.config.server.native.search-locations=file:./config/oar-dds \
-  --server.port=8888
-```
-
-**Option 2: Docker Compose**
-
-Uncomment the `config-server` service in `docker-compose.yml`, then:
-```bash
-docker-compose up -d config-server
-```
-
-### Verify Config Server
-
-```bash
-curl http://localhost:8888/actuator/health
-```
+This clones the oar-config repo, builds the config server JAR with configs baked in, and copies it to `config-server/`.
 
 ### Key Configuration Files
 
-Located in `config-server/config/oar-dds/` after setup:
+Config files are baked into the JAR at build time:
 
 | Service | Config File | Purpose |
 |---------|-------------|---------|
@@ -266,7 +273,12 @@ Located in `config-server/config/oar-dds/` after setup:
 | data-bundle | `data-bundle-service.yml` | Packaging limits, allowed URLs |
 | restricted-access | `restricted-access-service.yml` | RPA settings, JWT configuration |
 
-The config server must be running before starting other Docker services.
+### Verify Config Server
+
+```bash
+curl http://localhost:8888/actuator/health
+./oar-dds-ctl config cache-mgmt  # View service config
+```
 
 ## Docker Services
 
