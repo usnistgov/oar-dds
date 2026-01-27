@@ -1,0 +1,14 @@
+# Ignore everything in this directory
+*
+
+# Except these files (tracked in git)
+!README.md
+!.gitignore
+!Dockerfile
+!run.sh
+!setup-config.sh
+
+# Explicitly ignore build artifacts
+*.jar
+*.log
+*.tmp

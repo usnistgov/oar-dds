@@ -50,6 +50,15 @@ application-dev.yml
 .env
 secrets/
 
+# Demo UI (separate project)
+demo-ui/
+
+# Test data (local only)
+test-data/
+
+# Config repo (local clone)
+config-repo/
+
 # Documentation (keep out of commits)
 docs/
 

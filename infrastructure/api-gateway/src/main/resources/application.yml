@@ -73,6 +73,12 @@ spring:
           predicates:
             - Path=/rpa/**
 
+        # Notification Service routes (Python polyglot demo)
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/notify/**
+
       # Global CORS configuration
       globalcors:
         cors-configurations:

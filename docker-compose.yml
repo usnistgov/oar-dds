@@ -2,7 +2,7 @@ services:
   # Redis for API Gateway rate limiting
   redis:
     image: redis:7-alpine
-    container_name: oar-ms-redis
+    container_name: oar-dds-redis
     ports:
       - "6379:6379"
     healthcheck:
@@ -11,12 +11,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - oar-ms-network
+      - network
 
   # PostgreSQL Database for cache-mgmt service
   postgres:
     image: postgres:15-alpine
-    container_name: oar-ms-postgres
+    container_name: oar-dds-postgres
     environment:
       POSTGRES_USER: oar_app
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test123}
@@ -24,7 +24,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - oar-ms-postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U oar_app -d oar_cache"]
@@ -32,41 +32,40 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - oar-ms-network
+      - network
 
-  # Spring Cloud Config Server - Use external config server (run locally with java -jar)
-  # To use local config server: java -jar oar-config-server.jar --server.port=8888
-  # config-server:
-  #   build:
-  #     context: ./infrastructure/config-server
-  #     dockerfile: Dockerfile
-  #   container_name: oar-ms-config-server
-  #   ports:
-  #     - "8888:8888"
-  #   environment:
-  #     - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-native}
-  #   healthcheck:
-  #     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/actuator/health"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 10
-  #     start_period: 40s
-  #   networks:
-  #     - oar-ms-network
+  # Spring Cloud Config Server
+  # Requires setup first: cd config-server && ./setup-config.sh
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    container_name: oar-dds-config-server
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - network
 
   # Eureka Service Discovery Server
-  eureka-server:
+  oar-dds-eureka:
     build:
       context: ./infrastructure/eureka-server
       dockerfile: Dockerfile
-    container_name: oar-ms-eureka-server
+    container_name: oar-dds-eureka
     ports:
       - "8761:8761"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-    extra_hosts:
-      - "config-server:host-gateway"
+      - CONFIG_SERVER_URI=http://config-server:8888
+    depends_on:
+      config-server:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
       interval: 10s
@@ -74,221 +73,206 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - oar-ms-network
+      - network
 
   # Dataset Access Service
   dataset-access:
     build:
       context: ./services/dataset-access
       dockerfile: Dockerfile
-    container_name: oar-ms-dataset-access
+    container_name: oar-dds-dataset-access
     ports:
       - "8081:8081"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-    extra_hosts:
-      - "config-server:host-gateway"
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
     volumes:
-      - ./test-data:/usr/local/oar-dist-service/data  # Bind mount for testing
+      - ./test-data:/data/oar-dds/bags  # Bind mount for testing
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # AIP Access Service
   aip-access:
     build:
       context: ./services/aip-access
       dockerfile: Dockerfile
-    container_name: oar-ms-aip-access
+    container_name: oar-dds-aip-access
     ports:
       - "8082:8082"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-    extra_hosts:
-      - "config-server:host-gateway"
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
     volumes:
-      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
+      - ./test-data:/data/oar-dds/bags  # Bind mount for testing
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # Bundle Plan Service
   bundle-plan:
     build:
       context: ./services/bundle-plan
       dockerfile: Dockerfile
-    container_name: oar-ms-bundle-plan
+    container_name: oar-dds-bundle-plan
     ports:
       - "8083:8083"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=oar_bundle_plan
       - POSTGRES_USER=oar_app
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
-    extra_hosts:
-      - "config-server:host-gateway"
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # Data Bundle Service
   data-bundle:
     build:
       context: ./services/data-bundle
       dockerfile: Dockerfile
-    container_name: oar-ms-data-bundle
+    container_name: oar-dds-data-bundle
     ports:
       - "8084:8084"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-    extra_hosts:
-      - "config-server:host-gateway"
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # Cache Management Service
   cache-mgmt:
     build:
       context: ./services/cache-mgmt
       dockerfile: Dockerfile
-    container_name: oar-ms-cache-mgmt
+    container_name: oar-dds-cache-mgmt
     ports:
       - "8085:8085"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=oar_cache
       - POSTGRES_USER=oar_app
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
-    extra_hosts:
-      - "config-server:host-gateway"
     volumes:
-      - ./test-data:/usr/local/oar-dist-service/data  # Bind mount for testing (preservation storage)
-      - oar-ms-cache-data:/data/ds  # Docker volume for cache storage
+      - ./test-data:/data/oar-dds/bags  # Bind mount for testing (preservation storage)
+      - ./test-data/cache:/data/oar-dds/cache  # Cache admin directory
+      - cache-data:/data/ds  # Docker volume for cache storage
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # Restricted Access Service
   restricted-access:
     build:
       context: ./services/restricted-access
       dockerfile: Dockerfile
-    container_name: oar-ms-restricted-access
+    container_name: oar-dds-restricted-access
     ports:
       - "8086:8086"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-test123}
-    extra_hosts:
-      - "config-server:host-gateway"
     volumes:
-      - oar-ms-bag-storage-data:/usr/local/oar-dist-service/data
-      - oar-ms-rpa-cache-data:/data/rpa
+      - bag-storage-data:/usr/local/oar-dist-service/data
+      - rpa-cache-data:/data/rpa
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
       postgres:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # Version Service
   version-service:
     build:
       context: ./services/version-service
       dockerfile: Dockerfile
-    container_name: oar-ms-version-service
+    container_name: oar-dds-version-service
     ports:
       - "8087:8087"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-    extra_hosts:
-      - "config-server:host-gateway"
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # API Gateway
   api-gateway:
     build:
       context: ./infrastructure/api-gateway
       dockerfile: Dockerfile
-    container_name: oar-ms-api-gateway
+    container_name: oar-dds-api-gateway
     ports:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-local}
-      - CONFIG_SERVER_URI=http://host.docker.internal:8888
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - CONFIG_SERVER_URI=http://config-server:8888
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://oar-dds-eureka:8761/eureka/
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-    extra_hosts:
-      - "config-server:host-gateway"
     depends_on:
-      eureka-server:
+      oar-dds-eureka:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - oar-ms-network
+      - network
 
   # Demo UI - Angular Material Dashboard
   demo-ui:
     build:
       context: ./demo-ui
       dockerfile: Dockerfile
-    container_name: oar-ms-demo-ui
+    container_name: oar-dds-demo-ui
     ports:
       - "4200:80"
     depends_on:
       - api-gateway
-      - eureka-server
+      - oar-dds-eureka
       - cache-mgmt
       - dataset-access
     networks:
-      - oar-ms-network
+      - network
 
 networks:
-  oar-ms-network:
+  network:
     driver: bridge
 
 volumes:
-  oar-ms-postgres-data:
-  oar-ms-bag-storage-data:
-  oar-ms-cache-data:
-  oar-ms-rpa-cache-data:
+  postgres-data:
+  bag-storage-data:
+  cache-data:
+  rpa-cache-data:

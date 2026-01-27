@@ -282,7 +282,7 @@ for v in json.load(sys.stdin):
 
     # Step 6: Show relevant logs
     print_step "Step 6: Recent cache-mgmt activity (last 10 log lines)..."
-    docker logs oar-ms-cache-mgmt --tail 10 2>&1 | grep -v "^$" | sed 's/^/  /'
+    docker logs oar-dds-cache-mgmt --tail 10 2>&1 | grep -v "^$" | sed 's/^/  /'
     echo ""
 
     # Summary
@@ -505,7 +505,7 @@ cmd_rpa() {
 
     # Step 1: Check if RPA test data exists
     print_step "Step 1: Checking for RPA test data..."
-    if docker exec oar-ms-cache-mgmt ls /data/bags/${RPA_DATASET}* 2>/dev/null | head -1 > /dev/null 2>&1; then
+    if docker exec oar-dds-cache-mgmt ls /data/bags/${RPA_DATASET}* 2>/dev/null | head -1 > /dev/null 2>&1; then
         print_success "RPA test bags found for $RPA_DATASET"
     else
         print_warning "No RPA-specific bags found, using regular dataset: $DATASET_ID"
@@ -674,7 +674,7 @@ cmd_cache_clear() {
 
     # Clear the cache
     print_step "Clearing cache..."
-    docker exec oar-ms-postgres psql -U oar_app -d oar_cache -c "DELETE FROM objects;" > /dev/null 2>&1
+    docker exec oar-dds-postgres psql -U oar_app -d oar_cache -c "DELETE FROM objects;" > /dev/null 2>&1
 
     # Verify
     new_count=$(curl -s "$CACHE_MGMT_URL/cache/volumes/" | python3 -c "import sys,json; print(sum(v['filecount'] for v in json.load(sys.stdin)))" 2>/dev/null || echo "0")
@@ -736,7 +736,7 @@ except:
 
     # Database stats
     print_step "Database cache inventory:"
-    docker exec oar-ms-postgres psql -U oar_app -d oar_cache -t -c "
+    docker exec oar-dds-postgres psql -U oar_app -d oar_cache -t -c "
         SELECT 'Objects: ' || COUNT(*) FROM objects
         UNION ALL
         SELECT 'Volumes: ' || COUNT(*) FROM volumes
@@ -759,22 +759,22 @@ cmd_logs() {
         print_header "Logs: $service"
         case $service in
             cache-mgmt|cache)
-                docker logs oar-ms-cache-mgmt --tail=50 2>&1
+                docker logs oar-dds-cache-mgmt --tail=50 2>&1
                 ;;
             dataset-access|dataset)
-                docker logs oar-ms-dataset-access --tail=50 2>&1
+                docker logs oar-dds-dataset-access --tail=50 2>&1
                 ;;
             api-gateway|gateway)
-                docker logs oar-ms-api-gateway --tail=50 2>&1
+                docker logs oar-dds-api-gateway --tail=50 2>&1
                 ;;
             eureka|eureka-server)
-                docker logs oar-ms-eureka-server --tail=50 2>&1
+                docker logs oar-dds-eureka --tail=50 2>&1
                 ;;
             config|config-server)
-                docker logs oar-ms-config-server --tail=50 2>&1
+                docker logs oar-dds-config-server --tail=50 2>&1
                 ;;
             *)
-                docker logs "oar-ms-$service" --tail=50 2>&1 || echo "Unknown service: $service"
+                docker logs "oar-dds-$service" --tail=50 2>&1 || echo "Unknown service: $service"
                 ;;
         esac
     fi

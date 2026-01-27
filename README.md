@@ -212,42 +212,61 @@ unzip -l bundle.zip
 
 ## Configuration
 
-Service configurations are managed by an external Config Server (separate `oar-config-server` repository).
+Service configurations are managed by a Spring Cloud Config Server. The config files contain secrets and are **not committed to this repository**.
 
-### External Config Server Setup
+### Config Server Setup
 
-The config server runs locally (not in Docker) and Docker services connect via `host.docker.internal:8888`.
+Use the included setup script to pull configs from the [oar-config](https://github.com/usnistgov/oar-config) repository:
 
-Use the `oar-config` repository with the `develop/oar-dds-config` branch:
 ```bash
-git clone https://github.com/usnistgov/oar-config.git
-cd oar-config/oar-config-server
-git checkout develop/oar-dds-config
-mvn clean package -DskipTests
+# Setup config server (pulls JAR and config files)
+cd config-server
+./setup-config.sh
+
+# Or specify a branch
+./setup-config.sh develop/oar-dds-config
 ```
 
-Config files are stored in:
-- `oar-config-server/src/main/resources/config/oar-dds/`
+See [config-server/README.md](config-server/README.md) for detailed instructions.
 
-Key configuration files:
-- `cache-management-service.yml` - Cache volumes, preservation bag paths
-- `dataset-access-service.yml` - Remote cache manager settings
-- `bundle-plan-service.yml` - Bundle size limits, database settings
-- `data-bundle-service.yml` - Packaging limits, allowed URLs
-- `restricted-access-service.yml` - RPA settings, JWT configuration
+### Running the Config Server
 
-### Starting the Config Server
+**Option 1: Standalone (recommended for development)**
 
 ```bash
-# From oar-config-server directory
-cd /path/to/oar-config-server
-java -jar target/oar-config-server-1.2.0.jar --server.port=8888
+cd config-server
+java -jar oar-config-server-*.jar \
+  --spring.profiles.active=native \
+  --spring.cloud.config.server.native.search-locations=file:./config/oar-dds \
+  --server.port=8888
+```
 
-# Verify config server is running
+**Option 2: Docker Compose**
+
+Uncomment the `config-server` service in `docker-compose.yml`, then:
+```bash
+docker-compose up -d config-server
+```
+
+### Verify Config Server
+
+```bash
 curl http://localhost:8888/actuator/health
 ```
 
-The config server must be running before starting Docker services.
+### Key Configuration Files
+
+Located in `config-server/config/oar-dds/` after setup:
+
+| Service | Config File | Purpose |
+|---------|-------------|---------|
+| cache-mgmt | `cache-mgmt-service.yml` | Cache volumes, preservation bag paths |
+| dataset-access | `dataset-access-service.yml` | Remote cache manager settings |
+| bundle-plan | `bundle-plan-service.yml` | Bundle size limits, database settings |
+| data-bundle | `data-bundle-service.yml` | Packaging limits, allowed URLs |
+| restricted-access | `restricted-access-service.yml` | RPA settings, JWT configuration |
+
+The config server must be running before starting other Docker services.
 
 ## Docker Services
 
