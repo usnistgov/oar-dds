@@ -166,6 +166,11 @@ public class CacheManagementControllerIntegrationTest {
         assertEquals(HttpStatus.OK, resp.getStatusCode());
         JSONArray summary = new JSONArray(new JSONTokener(resp.getBody()));
         assertEquals(2, summary.length());
+
+        resp = websvc.exchange(getBaseURL() + "/cache/volumes", HttpMethod.GET, req, String.class);
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        summary = new JSONArray(new JSONTokener(resp.getBody()));
+        assertEquals(2, summary.length());
     }
 
     @Test

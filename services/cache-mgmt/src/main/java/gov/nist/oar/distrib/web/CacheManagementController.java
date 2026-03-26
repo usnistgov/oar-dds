@@ -136,7 +136,7 @@ public class CacheManagementController {
      */
     @Operation(summary="List summaries of the volumes in the cache", 
                description="Each item in the returned JSON array summarizes the state of a volume within the cache")
-    @GetMapping(value="/volumes/", produces = "application/json")
+    @GetMapping(value={"/volumes", "/volumes/"}, produces = "application/json")
     public List<Object> summarizeVolumes() throws InventoryException, NotOperatingException {
         _checkForManager();
         return mgr.summarizeVolumes().toList();

@@ -14,6 +14,69 @@ spring:
 
       # Explicit route definitions for fine-grained control
       routes:
+        # Legacy bundle-plan endpoint used behind existing nginx config
+        - id: bundle-plan-service-legacy
+          uri: lb://bundle-plan-service
+          predicates:
+            - Path=/od/ds/_bundle_plan
+          filters:
+            - name: SetPath
+              args:
+                template: /ds/_bundle_plan
+
+        # Legacy data-bundle endpoint used behind existing nginx config
+        - id: data-bundle-service-legacy
+          uri: lb://data-bundle-service
+          predicates:
+            - Path=/od/ds/_bundle
+          filters:
+            - name: SetPath
+              args:
+                template: /ds/_bundle
+
+        # Legacy direct AIP endpoint used behind existing nginx config
+        - id: aip-access-service-legacy
+          uri: lb://aip-access-service
+          predicates:
+            - Path=/od/ds/_aip/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /od/ds/_aip/(?<segment>.*)
+                replacement: /ds/_aip/${segment}
+
+        # Legacy RPA API endpoints used behind existing nginx config
+        - id: restricted-access-service-legacy
+          uri: lb://restricted-access-service
+          predicates:
+            - Path=/od/ds/rpa/**
+          filters:
+            - name: RewritePath
+              args:
+                regexp: /od/ds/rpa/(?<segment>.*)
+                replacement: /ds/rpa/${segment}
+
+        # Legacy Swagger/OpenAPI endpoint used behind existing nginx config
+        - id: dataset-access-service-docs-legacy-root
+          uri: lb://dataset-access-service
+          predicates:
+            - Path=/od/ds-api,/od/ds-api/
+          filters:
+            - name: SetPath
+              args:
+                template: /od/ds-api/swagger-ui.html
+
+        - id: dataset-access-service-docs-legacy
+          uri: lb://dataset-access-service
+          predicates:
+            - Path=/od/ds-api/**
+
+        # Legacy stylesheet path used by dataset directory listing pages
+        - id: dataset-access-service-css-legacy
+          uri: lb://dataset-access-service
+          predicates:
+            - Path=/od/css/**
+
         # Dataset Access Service routes
         - id: dataset-access-service
           uri: lb://dataset-access-service

@@ -106,6 +106,10 @@ public class NoCacheManagementControllerTest {
         ResponseEntity<String> resp = websvc.exchange(getBaseURL() + "/cache/volumes/",
                                                       HttpMethod.GET, req, String.class);
         assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
+
+        resp = websvc.exchange(getBaseURL() + "/cache/volumes",
+                               HttpMethod.GET, req, String.class);
+        assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
     }
 
     @Test
