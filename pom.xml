@@ -30,7 +30,7 @@
         <commons-io.version>2.15.1</commons-io.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <aws-sdk.version>1.12.650</aws-sdk.version>
-        <postgresql.version>42.7.7</postgresql.version>
+        <postgresql.version>42.7.11</postgresql.version>
         <flyway.version>10.8.1</flyway.version>
 
         <!-- Test Versions -->
